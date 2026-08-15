@@ -4,7 +4,7 @@
 
 ## Context
 
-`initial-spec.md` §11 gated Shatter on "a physical attack with at least **70 raw damage**". Sorting every physical stack in the roster against a Frozen target put three of them within 1.9 points of the line, on both sides:
+`v0.4-draft.md` §11 gated Shatter on "a physical attack with at least **70 raw damage**". Sorting every physical stack in the roster against a Frozen target put three of them within 1.9 points of the line, on both sides:
 
 | raw | stack | vs the 70 gate |
 | --- | --- | --- |

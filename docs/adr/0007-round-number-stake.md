@@ -4,7 +4,7 @@
 
 ## Context
 
-`initial-spec.md` §5 dealt `clamp(6 + floor(survivingEnemyUnitValue / 200), 6, 16)` and targeted 8–12 rounds. It cannot produce that range, and the reason is structural rather than a mistuned constant.
+`v0.4-draft.md` §5 dealt `clamp(6 + floor(survivingEnemyUnitValue / 200), 6, 16)` and targeted 8–12 rounds. It cannot produce that range, and the reason is structural rather than a mistuned constant.
 
 - **The floor is 9 rounds.** A perfect stomp — winning decisively from round 1 — deals 87 Command through round 8 and only crosses 100 on round 9. An 8-round match is arithmetically unreachable.
 - **A competitive match runs 13–18 rounds.** At a 50/50 record the loser takes damage on half the rounds, so 100 Command needs ~9 losses ≈ 17–18 rounds. **The better the match, the further outside the target it falls.**

@@ -4,7 +4,7 @@
 
 ## Context
 
-`initial-spec.md` §4 stated "**No selling in v0.4**", deferring it because it "interacts directly with affinity investment and creates progression exploits if affinity survives a sale", and arguing that "the larger army cap gives players enough room to make tactical corrections without requiring liquidation".
+`v0.4-draft.md` §4 stated "**No selling in v0.4**", deferring it because it "interacts directly with affinity investment and creates progression exploits if affinity survives a sale", and arguing that "the larger army cap gives players enough room to make tactical corrections without requiring liquidation".
 
 The first reason is real. The second is false under an ownership cap ([ADR-0011](0011-cap-is-on-ownership.md)): without selling, four cheap squads bought in round 1 permanently consume a third of the army, and a swarm build capped at R4 has 4,250 gold of future income and nothing to buy with it. That is not commitment, it is build death eight rounds early.
 

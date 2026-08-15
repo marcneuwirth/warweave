@@ -4,7 +4,7 @@
 
 ## Context
 
-`initial-spec.md` §22 gave an armour curve and nothing else. It did not say where percentage modifiers land relative to armour, and with a dozen effects in circulation (+45% Hooked Spears, +32% Pack Hunter, −20% Phalanx, −50% Brace) the answer changes stacked outcomes by large factors. No time-to-kill in the game was computable.
+`v0.4-draft.md` §22 gave an armour curve and nothing else. It did not say where percentage modifiers land relative to armour, and with a dozen effects in circulation (+45% Hooked Spears, +32% Pack Hunter, −20% Phalanx, −50% Brace) the answer changes stacked outcomes by large factors. No time-to-kill in the game was computable.
 
 ## Decision
 

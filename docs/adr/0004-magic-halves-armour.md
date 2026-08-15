@@ -4,7 +4,7 @@
 
 ## Context
 
-`initial-spec.md` §22 said "magic ignores 50% of physical armor" without saying whether that halves the *armour value* before the curve or the *resulting reduction* after it. The two differ.
+`v0.4-draft.md` §22 said "magic ignores 50% of physical armor" without saying whether that halves the *armour value* before the curve or the *resulting reduction* after it. The two differ.
 
 ## Decision
 

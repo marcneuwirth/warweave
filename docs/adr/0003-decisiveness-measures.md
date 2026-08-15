@@ -4,7 +4,7 @@
 
 ## Context
 
-`initial-spec.md` §5 used `survivingEnemyUnitValue` for Command damage and `squadRemainingHPPercent` for timeout resolution, and defined neither.
+`v0.4-draft.md` §5 used `survivingEnemyUnitValue` for Command damage and `squadRemainingHPPercent` for timeout resolution, and defined neither.
 
 ## Decision
 
