@@ -4,7 +4,7 @@ Evidence base for [Compute the canonical matchup tables](https://github.com/marc
 Paper math only, per the map's validation method. **No decisions are made here** — every defect
 below is flagged and routed, not resolved.
 
-Computed against the hardened kernel, not `initial-spec.md` as written:
+Computed against the hardened kernel, not `v0.4-draft.md` as written:
 
 - [Fix the combat math kernel](https://github.com/marcneuwirth/warweave/issues/2) — three-bucket
   pipeline, magic halves armour before the curve, **no overkill carry**, squad-level targeting with
