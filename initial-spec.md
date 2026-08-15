@@ -1,3 +1,13 @@
+> # ⚠ SUPERSEDED
+>
+> **This document is no longer the source of truth.** It is the pre-hardening draft, retained unchanged because the ADRs cite its section numbers and rulings.
+>
+> The current specification is **[`docs/spec/v0.4.md`](docs/spec/v0.4.md)**. Vocabulary is in [`CONTEXT.md`](CONTEXT.md); the decisions that changed this document into that one are in [`docs/adr/`](docs/adr/).
+>
+> Much of what follows was found to be wrong during hardening — the Command formula cannot produce its own target match length, two signature abilities could never fire, the elemental loop could not be cashed by its own branch, and the roster produced a total-ordered archetype field. Read it as history, never as rules.
+
+---
+
 I’d make v0.4 a **narrower, fun-complete prototype** rather than expanding the current implementation scope. It keeps the shared roster, affinity identity, positioning emphasis, and deterministic simulation from v0.3, but moves the full match loop and hybridization ahead of the 18-unit/72-tech expansion.  
 
 # WARWEAVE — Prototype Design Specification v0.4
