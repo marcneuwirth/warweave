@@ -1,0 +1,270 @@
+{
+  "schema": "warweave.golden",
+  "schemaVersion": 1,
+  "goldenVersion": 1,
+  "specSource": "docs/spec/v0.4.md",
+  "specVersion": "v0.4 (hardened)",
+  "rosterVersion": 1,
+  "tickSeconds": 0.05,
+  "derivation": "instruments/golden-v1.md — every value here is computed by hand there, with the arithmetic shown",
+  "authoredBy": "hand, from the spec — never from matchup-math/, which is a control arm and not an oracle (§33.9)",
+
+  "readings": {
+    "note": "Places the spec did not decide. Each is marked with its finding id in golden-v1.md. A kernel that disagrees with a test may be disagreeing with the reading rather than with the spec — check here first.",
+    "aoeCatchIncludesPrimary": true,
+    "aoeCatchClampedToLivingModels": true,
+    "aoeAppliesStatusToEveryModelDamaged": true,
+    "burningIsNotAnAttack": true,
+    "flankingTest": "dot(targetSquadFacing, attackerModelPos - targetSquadCentre) < 0, strictly, unnormalised",
+    "flankingBoundaryBelongsToFront": true,
+    "firesOnAcquisition": true,
+    "frozenPausesAttackTimerOnly": true,
+    "frozenStoresRemainingTicksNotDeadline": true,
+    "controlDwellRestartsAfterLapse": true,
+    "controlRadiusMeasuredCentreToPoint": true,
+    "controlContestIsStrictInequality": true,
+    "commandIsFloatNeverRounded": true,
+    "formationRigidityInContact": null
+  },
+
+  "tests": [
+    {
+      "id": "G-1a",
+      "phase": "P0",
+      "name": "three-bucket pipeline — fireball into Militia, flanking live",
+      "spec": ["22.1", "22.4", "11.1", "23.2"],
+      "attacker": { "unitType": "emberMage", "baseDamage": 95, "damageType": "magic" },
+      "target": { "unitType": "militia", "hpPerModel": 100, "armor": 0, "models": 8, "spacing": 2.0 },
+      "modifiers": { "offensivePool": [0.25], "deliveryScalars": { "primary": 1.0, "splash": 0.5 }, "defensiveChain": [] },
+      "expect": {
+        "rawDamage": 118.75,
+        "primaryDamage": 118,
+        "splashDamage": 59,
+        "modelsCaught": 4,
+        "killsOnImpact": 1,
+        "survivorHp": 41,
+        "burningPerSecond": 10,
+        "burningTotal": 40,
+        "survivorHpAfterBurn": 1
+      }
+    },
+    {
+      "id": "G-1b",
+      "phase": "P0",
+      "name": "same fireball into Spear Guard — armour term live",
+      "spec": ["22.1", "22.3"],
+      "attacker": { "unitType": "emberMage", "baseDamage": 95, "damageType": "magic" },
+      "target": { "unitType": "spearGuard", "hpPerModel": 210, "armor": 30, "models": 6, "spacing": 2.0 },
+      "expect": {
+        "effectiveArmor": 15.0,
+        "armorMult": 0.8695652173913043,
+        "primaryDamage": 82,
+        "splashDamage": 41,
+        "modelsCaught": 4,
+        "burningPerSecond": 8,
+        "burningTotal": 32,
+        "killsOnImpact": 0
+      }
+    },
+    {
+      "id": "G-2",
+      "phase": "P0",
+      "name": "armour curve, and magic halving armour before the curve",
+      "spec": ["22.2", "22.3"],
+      "adr": "0004",
+      "curve": [
+        { "armor": 0,  "physical": 1.0,                "magic": 1.0 },
+        { "armor": 10, "physical": 0.9090909090909091, "magic": 0.9523809523809523 },
+        { "armor": 15, "physical": 0.8695652173913043, "magic": 0.9302325581395349 },
+        { "armor": 20, "physical": 0.8333333333333334, "magic": 0.9090909090909091 },
+        { "armor": 25, "physical": 0.8,                "magic": 0.8888888888888888 },
+        { "armor": 30, "physical": 0.7692307692307693, "magic": 0.8695652173913043 },
+        { "armor": 40, "physical": 0.7142857142857143, "magic": 0.8333333333333334 },
+        { "armor": 65, "physical": 0.6060606060606061, "magic": 0.7547169811320755 }
+      ],
+      "discriminator": {
+        "scenario": "one Ember Mage attack (95 magic, no modifiers) into one Banner Guard model (armour 40)",
+        "expect": 79,
+        "rejectedReadingWouldGive": 81,
+        "rejectedReading": "halve the resulting reduction instead of the armour value"
+      }
+    },
+    {
+      "id": "G-3",
+      "phase": "P1",
+      "name": "geometric AoE catch",
+      "spec": ["22.4"],
+      "adr": "0029",
+      "formula": "floor(pi * r^2 / spacing^2), clamped to living models",
+      "cells": [
+        { "effect": "volley3",       "r": 1.5,  "bySpacing": { "1.6": 2, "2.0": 1, "2.5": 1, "3.0": 0, "3.2": 0 } },
+        { "effect": "chainLightning3", "r": 3.2, "bySpacing": { "1.6": 12, "2.0": 8, "2.5": 5, "3.0": 3, "3.2": 3 } },
+        { "effect": "fireball",      "r": 2.5,  "bySpacing": { "1.6": 7, "2.0": 4, "2.5": 3, "3.0": 2, "3.2": 1 } },
+        { "effect": "focusedFlame",  "r": 1.25, "bySpacing": { "1.6": 1, "2.0": 1, "2.5": 0, "3.0": 0, "3.2": 0 } },
+        { "effect": "firestorm",     "r": 5.0,  "bySpacing": { "1.6": 30, "2.0": 19, "2.5": 12, "3.0": 8, "3.2": 7 } }
+      ],
+      "note": "unclamped values. Against an 8-model squad the clamp binds on chainLightning3 at 1.6/2.0 and on firestorm at 1.6/2.0/2.5/3.0. §22.4's printed table disagrees in three places — see finding F-1."
+    },
+    {
+      "id": "G-4",
+      "phase": "P0",
+      "name": "flanking arc at 89 and 91 degrees",
+      "spec": ["23.2"],
+      "adr": "0032",
+      "targetSquadFacing": [0.0, 1.0],
+      "cases": [
+        { "degrees": 89.0, "attackerPos": [4.999238, 0.087262],  "dot": 0.087262,  "flanking": false },
+        { "degrees": 90.0, "attackerPos": [5.0, 0.0],            "dot": 0.0,       "flanking": false },
+        { "degrees": 91.0, "attackerPos": [4.999238, -0.087262], "dot": -0.087262, "flanking": true }
+      ],
+      "damage": {
+        "scenario": "one Militia model (30 physical) into a Spear Guard model (armour 30)",
+        "noFlank": 23,
+        "flanking": 28
+      }
+    },
+    {
+      "id": "G-5a",
+      "phase": "P1",
+      "name": "Frozen 0.75s against a 1.5s cooldown",
+      "spec": ["11.3", "12"],
+      "frozenTicks": 15,
+      "immunityTicks": 25,
+      "cooldownTicks": 30,
+      "timeline": [
+        { "tick": 0,  "event": "acquire and fire; deadline = tick 30" },
+        { "tick": 10, "event": "Frozen applied; 20 cooldown ticks remain" },
+        { "tick": 25, "event": "thaw; timer resumes; immunity begins" },
+        { "tick": 45, "event": "fires — delayed by exactly 15 ticks" },
+        { "tick": 50, "event": "earliest a second Frozen can land" }
+      ]
+    },
+    {
+      "id": "G-5b",
+      "phase": "P1",
+      "name": "one Frostcaller on one target reproduces §11.6's 20.8%",
+      "spec": ["11.2", "11.3", "11.6", "15"],
+      "cadenceSeconds": 1.8,
+      "cycleTicks": 72,
+      "frozenTicksPerCycle": 15,
+      "expect": { "uptime": 0.20833333333333334, "specPrints": 0.208, "ceiling": 0.375 }
+    },
+    {
+      "id": "G-6",
+      "phase": "P0",
+      "name": "Shatter on the Heavy tag, deep chill, and the additive offensive pool",
+      "spec": ["11.5", "22.1"],
+      "adr": ["0002", "0001"],
+      "cases": [
+        { "id": "G-6a", "attack": "troll 120 physical Heavy", "target": "Frozen Banner Guard model (armour 40)", "pool": [0.25], "expect": 107, "frozenStillApplied": true },
+        { "id": "G-6b", "attack": "emberMage 95 magic",       "target": "Frozen Spear Guard model (armour 30)",  "pool": [0.25], "expect": 103 },
+        { "id": "G-6c", "attack": "militia 30 physical",      "target": "Frozen Spear Guard model (armour 30)",  "pool": [],     "expect": 23 },
+        { "id": "G-6d", "attack": "longbowmen 58 physical Heavy", "target": "Frozen and flanked Spear Guard model (armour 30)", "pool": [0.25, 0.25], "expect": 66, "chainedReadingWouldGive": 69 }
+      ]
+    },
+    {
+      "id": "G-7a",
+      "phase": "P1",
+      "name": "no overkill carry — §22.6's own example",
+      "spec": ["22.6", "24.2"],
+      "scenario": "5 attacks of 78 damage into 100 HP models, sequential in ModelID order, each taking the lowest-HP model in reach",
+      "expect": { "kills": 2, "carryingKernelWouldKill": 3, "totalDamage": 390 },
+      "assumes": "culling preference and sequential resolution — see finding F-8"
+    },
+    {
+      "id": "G-7b",
+      "phase": "P0",
+      "name": "no overkill carry — geometry-free, inside G-1a",
+      "spec": ["22.6"],
+      "scenario": "118 + 3 x 59 into 100 HP models",
+      "expect": { "totalDamage": 295, "kills": 1, "carryingKernelWouldKill": 2 }
+    },
+    {
+      "id": "G-8",
+      "phase": "P0",
+      "name": "frontage = (front - 1) * spacing + 2 * radius",
+      "spec": ["13", "23.5", "23.6"],
+      "frontages": {
+        "militia": 6.8, "hunters": 8.8, "spearGuard": 10.8, "knights": 8.7,
+        "longbowmen": 8.8, "bannerGuard": 10.8, "emberMage": 4.8, "lifewarden": 10.8,
+        "stormcaller": 4.8, "frostcaller": 4.8, "direwolves": 7.0, "troll": 5.4,
+        "stonebacks": 8.7, "griffin": 6.2
+      },
+      "specDisagreesOn": { "troll": { "specPrints": 8.4, "formulaGives": 5.4, "finding": "F-9" } },
+      "seam": { "sixSpearGuardCentreToCentre": 60.0, "sixSpearGuardSurfaceToSurface": 64.8, "fiveSpearGuard": 54.0, "seamWidth": 6.0, "passesIntact": ["emberMage", "stormcaller", "frostcaller", "troll"] }
+    },
+    {
+      "id": "G-9",
+      "phase": "P0",
+      "name": "projectile flight, quantised to 20Hz",
+      "spec": ["22.7"],
+      "formula": "ceil(range / (speed * tickSeconds))",
+      "weapons": [
+        { "weapon": "arrowHunters",     "range": 12, "speed": 60, "flightTicks": 4,  "quantised": 0.20, "specPrints": 0.20 },
+        { "weapon": "arrowLongbowmen",  "range": 14, "speed": 60, "flightTicks": 5,  "quantised": 0.25, "specPrints": 0.23 },
+        { "weapon": "frostbolt",        "range": 24, "speed": 35, "flightTicks": 14, "quantised": 0.70, "specPrints": 0.69 },
+        { "weapon": "stormBolt",        "range": 15, "speed": 35, "flightTicks": 9,  "quantised": 0.45, "specPrints": 0.43 },
+        { "weapon": "fireball",         "range": 26, "speed": 30, "flightTicks": 18, "quantised": 0.90, "specPrints": 0.87 },
+        { "weapon": "thrownStone",      "range": 19, "speed": 25, "flightTicks": 16, "quantised": 0.80, "specPrints": 0.76 }
+      ]
+    },
+    {
+      "id": "G-10",
+      "phase": "P2",
+      "name": "controlShare across a battle with pursuit",
+      "spec": ["5.3", "5.4", "5.5"],
+      "adr": "0021",
+      "scenario": "three Direwolves squads raid an uncontested point; attacker's line wipes at t=60s; 20s pursuit",
+      "timeline": [
+        { "t": 30.0, "contribution": 600.0, "event": "24 models inside 8m; dwell starts" },
+        { "t": 33.0, "contribution": 600.0, "event": "dwell complete; banking begins" },
+        { "t": 50.0, "contribution": 500.0, "event": "squad A down to 4 models; still above 400" },
+        { "t": 70.0, "contribution": 175.0, "event": "squad C wiped, squad B at 3 models; banking stops" }
+      ],
+      "expect": {
+        "bankedSeconds": 37.0,
+        "bankedTicks": 740,
+        "durationSeconds": 80.0,
+        "durationTicks": 1600,
+        "controlShare": 0.4625,
+        "objectiveDamageRound5": 2.08125
+      }
+    },
+    {
+      "id": "G-11",
+      "phase": "P2",
+      "name": "winnerIntegrity and battle damage",
+      "spec": ["5.1", "5.2"],
+      "deployedValue": 500,
+      "squads": [
+        { "unitType": "militia",    "cost": 100, "startHp": 800,  "currentHp": 300,  "pct": 0.375 },
+        { "unitType": "spearGuard", "cost": 200, "startHp": 1260, "currentHp": 1260, "pct": 1.0 },
+        { "unitType": "emberMage",  "cost": 200, "startHp": 450,  "currentHp": 150,  "pct": 0.3333333333333333 }
+      ],
+      "expect": {
+        "weightedSum": 304.1666666666667,
+        "winnerIntegrity": 0.6083333333333333,
+        "stakeRound5": 15,
+        "battleDamage": 9.471875,
+        "drawDamageEachSide": 5.25
+      }
+    },
+    {
+      "id": "G-12",
+      "phase": "P1",
+      "name": "reach >= spacing, and what a second rank fields",
+      "spec": ["23.5", "22.6"],
+      "status": "authored, not yet gradeable — blocked on issue #45 (formation rigidity)",
+      "rigidFormation": {
+        "militiaVsLine": { "rank2SurfaceDistance": 2.0, "reach": 1.0, "attackingModels": 4, "specClaims": 4 },
+        "militiaVsSingleLargeModel": { "rank2SurfaceDistance": 2.0, "reach": 1.0, "attackingModels": 4, "specClaims": 8 }
+      },
+      "finding": "F-11"
+    }
+  ],
+
+  "invariants": [
+    { "id": "INV-1", "rule": "Frozen uptime on any single model never exceeds 0.375", "spec": "11.3", "scope": "every recorded pass" },
+    { "id": "INV-2", "rule": "maxSpeedSum * tickSeconds < minMeleeReach", "spec": "23.4 / issue #28", "value": "0.825 < 1.00", "scope": "load time" }
+  ]
+}
