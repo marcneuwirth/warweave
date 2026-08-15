@@ -25,7 +25,11 @@ The grilling session settled eight things, all of which are inputs here:
 
 Run:  python3 roster19.py [rungs|common|field|cats|all]
 """
-import sys, copy, itertools, math
+import sys, os, copy, itertools, math
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                '..', '..', '..', 'data'))
+import roster as rosterdata
 
 import mm
 import sim2
@@ -42,51 +46,21 @@ BASE_SPLASH = sim2.splash_models
 # tier      : affinity gate (0, 2, 4)
 # charging  : enters the Charging state to reach contact -- Military's counter
 #             keys on this, so it is a property of *access*, not of Beast
-U19 = {
- # ---- Common: no role, no affinity, gold-efficient and slot-inefficient -----
- 'Militia':    dict(cost=100, n=8, hp=100, ar=0,  dmg=30, cd=1.0,  rng=1.0,  typ='phys',  spd=4.5, rad=0.4, front=4, ranks=2, sp=2.0, heavy=False, branch='Common',   large=False, tier=0, role='none',   rung='none'),
- 'Hunters':    dict(cost=150, n=5, hp=120, ar=0,  dmg=42, cd=1.6,  rng=12.0,  typ='phys',  spd=4.0, rad=0.4, front=5, ranks=1, sp=2.0, heavy=False, branch='Common',   large=False, tier=0, role='none',   rung='none'),
-
- # ---- Military: hold-best / access-adequate / reach is the hole -------------
- 'SpearGuard': dict(cost=200, n=6, hp=210, ar=30, dmg=48, cd=1.5,  rng=2.2,  typ='phys',  spd=4.5, rad=0.4, front=6, ranks=1, sp=2.0, heavy=False, branch='Military', large=False, tier=0, role='hold',   rung='best'),
- 'Knights':    dict(cost=275, n=4, hp=260, ar=30, dmg=62, cd=1.6,  rng=1.8,  typ='phys',  spd=6.5, rad=0.6, front=4, ranks=1, sp=2.5, heavy=False, branch='Military', large=False, tier=2, role='access', rung='adequate', charging=True),
- 'Longbowmen': dict(cost=350, n=5, hp=195, ar=15, dmg=58, cd=2.4,  rng=14.0, typ='phys',  spd=4.0, rad=0.4, front=5, ranks=1, sp=2.0, heavy=True,  branch='Military', large=False, tier=4, role='reach',  rung='weak'),
- 'BannerGuard':dict(cost=350, n=6, hp=300, ar=40, dmg=52, cd=1.5,  rng=2.2,  typ='phys',  spd=4.0, rad=0.4, front=6, ranks=1, sp=2.0, heavy=False, branch='Military', large=False, tier=4, role='hold',   rung='capstone'),
-
- # ---- Magic: reach-best / hold-adequate / access is the hole ----------------
- 'EmberMage':  dict(cost=200, n=3, hp=150, ar=0,  dmg=95, cd=2.25, rng=26.0, typ='magic', spd=4.0, rad=0.4, front=3, ranks=1, sp=2.0, heavy=False, branch='Magic',    large=False, tier=0, role='reach',  rung='best'),
- 'Lifewarden': dict(cost=250, n=6, hp=165, ar=20, dmg=38, cd=1.5,  rng=2.2,  typ='magic', spd=4.0, rad=0.4, front=6, ranks=1, sp=2.0, heavy=False, branch='Magic',    large=False, tier=2, role='hold',   rung='adequate'),
- 'Stormcaller':dict(cost=325, n=3, hp=210, ar=0,  dmg=70, cd=2.0,  rng=15.0, typ='magic', spd=4.0, rad=0.4, front=3, ranks=1, sp=2.0, heavy=False, branch='Magic',    large=False, tier=4, role='access', rung='weak'),
- 'Frostcaller':dict(cost=325, n=3, hp=160, ar=0,  dmg=115, cd=1.8,  rng=24.0, typ='magic', spd=4.0, rad=0.4, front=3, ranks=1, sp=2.0, heavy=False, branch='Magic',    large=False, tier=4, role='reach',  rung='capstone'),
-
- # ---- Beast: access-best / reach-adequate / hold is the hole ---------------
- 'Direwolves': dict(cost=200, n=8, hp=125, ar=0,  dmg=34, cd=0.9,  rng=1.0,  typ='phys',  spd=7.5, rad=0.5, front=4, ranks=2, sp=2.0, heavy=False, branch='Beast',    large=False, tier=0, role='access', rung='best',     charging=True),
- 'Troll':      dict(cost=225, n=2, hp=520, ar=25, dmg=120,cd=2.0,  rng=19.0, typ='phys',  spd=3.5, rad=1.2, front=2, ranks=1, sp=3.0, heavy=True,  branch='Beast',    large=True,  tier=2, role='reach',  rung='adequate', regen=25.0),
- 'Stonebacks': dict(cost=300, n=4, hp=200, ar=20, dmg=55, cd=1.8,  rng=2.4,  typ='phys',  spd=4.0, rad=0.6, front=4, ranks=1, sp=2.5, heavy=False, branch='Beast',    large=False, tier=4, role='hold',   rung='weak'),
- 'Griffin':    dict(cost=300, n=3, hp=300, ar=10, dmg=72, cd=1.4,  rng=1.6,  typ='phys',  spd=9.0, rad=0.6, front=3, ranks=1, sp=2.5, heavy=False, branch='Beast',    large=False, tier=4, role='access', rung='capstone', charging=True),
-}
+# The stat blocks are no longer authored here. They live in the versioned
+# artifact `data/roster-v1.json`, hand-authored from the spec, which the Go
+# runner reads with `encoding/json` and this control arm reads through
+# `data/roster.py` (#26). Written once, so the two arms cannot diverge.
+U19 = rosterdata.roster()
 
 # ---------------------------------------------------------------------------
 # Tier-3 upgrade tracks -- two per unit, three steps, pick one and climb it
 # ---------------------------------------------------------------------------
 # Step 3 of one track per branch carries that branch's counter (Q9).
 # Costs 150 / 200 / 250; only the first step counts toward branchInvestment (Q11).
-STEP_COST = (150, 200, 250)
+# Both now come from `data/roster-v1.json`, same as the stat blocks.
+STEP_COST = rosterdata.TRACK_STEP_COSTS
 
-TRACKS = {
- 'Longbowmen':  {'Bodkin':   [{'pen': 20.0}, {'pen': 40.0}, {'pen': 60.0, 'heavy': False}],
-                 'Volley':   [{'volley_r': 0.75}, {'volley_r': 1.10}, {'volley_r': 1.50}]},
- 'BannerGuard': {'Rally':    [{'aura_ehp': 0.08}, {'aura_ehp': 0.15}, {'aura_brace': 0.40}],   # <- Military's counter
-                 'Oath':     [{'aura_dmg': 0.08}, {'aura_dmg': 0.15}, {'aura_dmg': 0.25}]},
- 'Stormcaller': {'ChainLightning': [{'aoe_r': 1.5}, {'aoe_r': 2.2}, {'aoe_r': 3.2}],           # <- Magic's counter
-                 'Skyfall':  [{'skyfall': 0.15}, {'skyfall': 0.28}, {'skyfall': 0.45}]},
- 'Frostcaller': {'DeepFreeze': [{'fz': 0.90}, {'fz': 1.05}, {'fz': 1.25}],
-                 'FrostArmor': [{'shield': 60.0}, {'shield': 90.0}, {'shield': 120.0}]},
- 'Stonebacks':  {'Stonehide': [{'ar_add': 15}, {'ar_add': 30}, {'ar_add': 45}],
-                 'Bulwark':  [{'sp': 2.8}, {'sp': 3.1}, {'sp': 3.4, 'front_phys_res': 0.20}]},
- 'Griffin':     {'Singling': [{'scarce': 0.15}, {'scarce': 0.25}, {'scarce': 0.40}],           # <- Beast's counter
-                 'Talons':   [{'bypass': 0.20}, {'bypass': 0.35}, {'bypass': 0.50}]},
-}
+TRACKS = rosterdata.mm_tracks()
 
 
 def track_over(unit, track, step):
