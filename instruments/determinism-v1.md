@@ -120,8 +120,9 @@ whether we cheated. A dependency file is a thing that can rot; stdlib is not.
 
 **Measured cost of the smoke check** on an M-series laptop, all seven modules:
 `corebet.py` 79s, `tech11.py` 36s, `roster19.py` 12s, the other four under a second —
-**127s**, so plausibly 5–10 minutes on a hosted runner. Accepted, because it runs in a
-parallel job and the workflow's wall clock is its slowest job, not the sum. **Stated
+**127s**. Measured again on `ubuntu-latest`: **228s** (139s / 67s / 21s), a flat 1.8×.
+Accepted, because it runs in a parallel job and the workflow's wall clock is its slowest
+job, not the sum. **Stated
 trigger, enforced by the check itself:** if the total exceeds **15 minutes** the check
 fails and tells you to move it to the promotion gate of §5 — the point being that it may
 not be quietly given a path filter instead.
