@@ -1,0 +1,67 @@
+# Enforcement for the determinism discipline. Contract and rationale:
+# `instruments/determinism-v1.md` (resolves #41, implements #25).
+#
+# The rule that generates this file: **a check is a runnable thing in the repo;
+# CI is only the place that runs it where nobody can skip it.** So every step
+# below is a one-line invocation of something an agent can run locally. Nothing
+# is implemented in YAML.
+#
+# No `paths:` filters, anywhere, deliberately — a skipped required check reads
+# the same at a glance as a passed one, which is #34's absent-versus-measured-zero
+# confusion arriving in the CI surface.
+#
+# The Go job is absent on purpose: `runner/` does not exist, so a Go job today
+# would be a green check over an empty directory — the same silent pass this
+# workflow exists to abolish (determinism-v1 F-5). §3.1 of the contract specifies
+# it; it lands in the same commit as `runner/go.mod`, when it can first fail.
+
+name: ci
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # The port (#26) and the promotion paperwork (#41 §5). Seconds.
+  artifacts:
+    name: artifacts — roster port, promoted manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: roster port is value-identical to the paper calculator
+        run: python3 data/conformance_test.py
+      - name: every promoted run records its determinism acceptance
+        run: python3 instruments/promoted_manifest_test.py
+
+      # Reserved slot, owned by #49: regenerate the deployment archetype table
+      # and diff it against the committed CSV. Not written here because #49
+      # ports the layout rule to Go and fixes the two defects #33 found, so the
+      # check's real subject is the Go generator. See determinism-v1 §3.3, F-1.
+      #
+      # - name: layout vN regenerates byte-identically
+      #   run: python3 instruments/layout_regen_test.py
+
+  # #27 made the 1-D control arm's runnability a tested property. ~2 min locally;
+  # its own budget check fails the job at 15 min (determinism-v1 §3.2).
+  control-arm:
+    name: control arm — 1-D witness still runs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # -u so the per-module timings stream into the log rather than arriving
+      # in one block at the end; this job is minutes long, not seconds.
+      - run: python3 -u docs/analysis/matchup-math/smoke_test.py
