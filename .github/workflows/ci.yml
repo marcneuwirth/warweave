@@ -43,13 +43,12 @@ jobs:
       - name: every promoted run records its determinism acceptance
         run: python3 instruments/promoted_manifest_test.py
 
-      # Reserved slot, owned by #49: regenerate the deployment archetype table
-      # and diff it against the committed CSV. Not written here because #49
-      # ports the layout rule to Go and fixes the two defects #33 found, so the
-      # check's real subject is the Go generator. See determinism-v1 §3.3, F-1.
-      #
-      # - name: layout vN regenerates byte-identically
-      #   run: python3 instruments/layout_regen_test.py
+      # The slot determinism-v1 §3.3 reserved, filled by #49. Its subject today
+      # is the Python witness against the committed table; the Go generator
+      # becomes a second subject when `runner/` lands, and this step does not
+      # change when it does.
+      - name: layout v2 regenerates byte-identically
+        run: python3 instruments/layout_regen_test.py
 
   # #27 made the 1-D control arm's runnability a tested property. ~2 min locally;
   # its own budget check fails the job at 15 min (determinism-v1 §3.2).

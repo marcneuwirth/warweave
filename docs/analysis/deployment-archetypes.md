@@ -2,7 +2,9 @@
 
 Resolves [#18](https://github.com/marcneuwirth/warweave/issues/18). Generator in
 [`matchup-math/proto_archetypes.py`](matchup-math/proto_archetypes.py); the frozen table
-is [`deployment-archetypes-v1.csv`](deployment-archetypes-v1.csv).
+is [`deployment-archetypes-v1.csv`](deployment-archetypes-v1.csv) — both superseded at
+`layout v2` by [`instruments/deployment-layout-v2.md`](../../instruments/deployment-layout-v2.md)
+and [`deployment-archetypes-v2.csv`](deployment-archetypes-v2.csv).
 
 [#13](https://github.com/marcneuwirth/warweave/issues/13) declared two versioned artifacts
 and fixed their shape, count and change-invalidation semantics, but not their contents.
@@ -12,7 +14,22 @@ Every balance number in WARWEAVE is measured relative to them. This document aut
 
 ## 1. The deployment archetype set
 
+> **§1 is superseded by [`instruments/deployment-layout-v2.md`](../../instruments/deployment-layout-v2.md)
+> (`layout v2`, #33 and #49).** It is kept as the record of what #18 decided and why. Three
+> claims below are now known to be wrong or incomplete, and the sections carry the
+> corrections inline: §1.1's central dichotomy (#33 F-1), §1.5's *"all 90 cells are legal"*
+> as a property of the rule (#33 F-6), and the front-to-back comparator's totality (#33 F-2).
+> §2, the reference purchase policy, is **not** superseded — it is still the artifact §33's
+> table points at.
+
 ### 1.1 What the artifact is
+
+> **Corrected by #33 (F-1).** The dichotomy below is false: the frozen table is a
+> *memoisation of the generator*, not an independently authored artifact — `cmd_freeze()`
+> emits it from the very functions the runner was said never to execute. *"A coordinate
+> table, not a rule"* describes the storage, not the provenance. Under `layout v2` the
+> **rule** is the artifact, the runner executes it to place any army, and the table is the
+> conformance check that a second implementation is the same generator.
 
 **A coordinate table, not a rule.** Six archetypes × fifteen builds × up to twelve squads —
 **1,056 rows**, each carrying an exact `x`, `y` and stance. The versioned artifact is the
@@ -71,6 +88,13 @@ therefore a comparison the sweep can read, not a global setting. Of 1,056 slots:
 315 Hold, 711 Advance.
 
 ### 1.5 Legality
+
+> **Corrected by #33 (F-6, F-3).** This is a property **of the fifteen, not of the rule**:
+> it was established by forcing legality over a frozen build set. The rule admits illegal
+> output outside it — the rear rank's offset from the baseline never got the footprint-depth
+> treatment this section derives for rank *pitch*, and a Troll at `y = 1.0` lands off the
+> field. `layout v2` adds a depth-aware band clamp as a stated invariant and makes
+> `deploymentInfeasible` a declared per-cell outcome.
 
 **All 90 archetype × build cells are legal** — in band, on field, no overlapping
 footprints. Three constraints were derived rather than picked while forcing this:

@@ -29,6 +29,7 @@ import sys, os, copy, itertools, math
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 '..', '..', '..', 'data'))
+import builds as buildsdata
 import roster as rosterdata
 
 import mm
@@ -229,28 +230,14 @@ def exp_common():
 # they own one counter and one hole. Wide builds (3+3) field tiers 0/2 of two
 # branches: they cover every role and flip nothing. Q9's open question is
 # whether coverage beats variance.
-FIELD = {
-    # --- deep (Affinity 5): tier-3 units + one track climbed to step 3 -------
-    # Deep owns a counter and a hole, and pays 1,050g of track that buys no slot.
-    'MilDeepRally':  [('SpearGuard', 4), ('Knights', 2), ('BannerGuard', 5, 'Rally', 3)],
-    'MilDeepBodkin': [('SpearGuard', 5), ('Knights', 2), ('Longbowmen', 4, 'Bodkin', 3)],
-    'MagDeepChain':  [('EmberMage', 4), ('Lifewarden', 3), ('Stormcaller', 4, 'ChainLightning', 3)],
-    'MagDeepFrost':  [('EmberMage', 3), ('Lifewarden', 4), ('Frostcaller', 4, 'DeepFreeze', 3)],
-    'BeastDeepSing': [('Direwolves', 4), ('Troll', 3), ('Griffin', 5, 'Singling', 3)],
-    'BeastDeepStone':[('Direwolves', 5), ('Troll', 3), ('Stonebacks', 4, 'Stonehide', 3)],
-    # --- wide (3+3): tiers 0/2 of two branches. Covers every role, flips none.
-    'MilMagic':      [('SpearGuard', 5), ('Knights', 2), ('EmberMage', 3), ('Lifewarden', 2)],
-    'MilBeast':      [('SpearGuard', 5), ('Knights', 2), ('Direwolves', 3), ('Troll', 2)],
-    'MagicBeast':    [('EmberMage', 4), ('Lifewarden', 2), ('Direwolves', 4), ('Troll', 2)],
-    # --- pure (Affinity 5, tier-3 skipped): fills all twelve slots -----------
-    'PureMilitary':  [('SpearGuard', 8), ('Knights', 4)],
-    'PureMagic':     [('EmberMage', 6), ('Lifewarden', 6)],
-    'PureBeast':     [('Direwolves', 7), ('Troll', 5)],
-    # --- controls ------------------------------------------------------------
-    'SpearGuard12':  [('SpearGuard', 12)],
-    'Direwolves12':  [('Direwolves', 12)],
-    'CommonHeavy':   [('Militia', 8), ('Hunters', 4)],
-}
+# The fifteen are no longer authored here. They are a versioned artifact,
+# `data/builds.json`, hand-authored from the spec and read by both arms (#49).
+# They lived inside this file until #33's F-4: §33 calls the build set part of
+# the measurement artifact, but it was only expressible inside the 1-D witness
+# that §33.9 disqualifies as an oracle. `conformance_test.py` §9 proves the
+# port did not move a value.
+FIELD = buildsdata.field()
+
 CATS = list(FIELD)
 
 
@@ -346,15 +333,25 @@ def exp_cats():
         print(f"    {c:16s} {best[c]:16s} {wins[c]}-{played[c]-wins[c]:<4d} {rate:5.0%}  {band}")
 
 
-def main():
+COMMANDS = ('rungs', 'common', 'field', 'cycle', 'cats', 'all')
+
+
+def main(argv=None):
+    """An unrecognised subcommand exits non-zero (determinism-v1 F-1, #49)."""
+    argv = sys.argv if argv is None else argv
+    what = argv[1] if len(argv) > 1 else 'all'
+    if what not in COMMANDS:
+        print('unknown subcommand %r; expected one of %s'
+              % (what, ', '.join(COMMANDS)), file=sys.stderr)
+        return 2
     install()
-    what = sys.argv[1] if len(sys.argv) > 1 else 'all'
     if what in ('rungs', 'all'):  exp_rungs()
     if what in ('common', 'all'): exp_common()
     if what in ('field', 'all'):  exp_field()
     if what in ('cycle', 'all'):  exp_cycle()
     if what in ('cats', 'all'):   exp_cats()
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

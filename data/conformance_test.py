@@ -279,6 +279,70 @@ for name, u in roster.UNITS.items():
         check('%s gateway price' % name, 200 if u['affinityTier'] == 0 else u['cost'],
               200 if u['affinityTier'] == 0 else u['cost'])
 
+# --- 9. the build set: value-identical port, and roster legality (#47, #49) ---
+# `builds.json` carries `layoutVersion`, not `rosterVersion`, because #33 §7
+# makes the conformance table a pure function of (rule, builds). But every build
+# is priced and gated by the roster, so a reprice can make one illegal without
+# touching `layout`. That second coupling gets a check instead of a fifth
+# version number — this section is it.
+import builds  # noqa: E402
+
+# `FIELD` exactly as it stood in roster19.py before the port. Frozen here on
+# purpose, same as U19_BEFORE_PORT above: a one-time equivalence proof.
+FIELD_BEFORE_PORT = {
+ 'MilDeepRally':  [('SpearGuard', 4), ('Knights', 2), ('BannerGuard', 5, 'Rally', 3)],
+ 'MilDeepBodkin': [('SpearGuard', 5), ('Knights', 2), ('Longbowmen', 4, 'Bodkin', 3)],
+ 'MagDeepChain':  [('EmberMage', 4), ('Lifewarden', 3), ('Stormcaller', 4, 'ChainLightning', 3)],
+ 'MagDeepFrost':  [('EmberMage', 3), ('Lifewarden', 4), ('Frostcaller', 4, 'DeepFreeze', 3)],
+ 'BeastDeepSing': [('Direwolves', 4), ('Troll', 3), ('Griffin', 5, 'Singling', 3)],
+ 'BeastDeepStone':[('Direwolves', 5), ('Troll', 3), ('Stonebacks', 4, 'Stonehide', 3)],
+ 'MilMagic':      [('SpearGuard', 5), ('Knights', 2), ('EmberMage', 3), ('Lifewarden', 2)],
+ 'MilBeast':      [('SpearGuard', 5), ('Knights', 2), ('Direwolves', 3), ('Troll', 2)],
+ 'MagicBeast':    [('EmberMage', 4), ('Lifewarden', 2), ('Direwolves', 4), ('Troll', 2)],
+ 'PureMilitary':  [('SpearGuard', 8), ('Knights', 4)],
+ 'PureMagic':     [('EmberMage', 6), ('Lifewarden', 6)],
+ 'PureBeast':     [('Direwolves', 7), ('Troll', 5)],
+ 'SpearGuard12':  [('SpearGuard', 12)],
+ 'Direwolves12':  [('Direwolves', 12)],
+ 'CommonHeavy':   [('Militia', 8), ('Hunters', 4)],
+}
+
+check('build set — names and order', list(builds.BUILDS), list(FIELD_BEFORE_PORT))
+for name, spec in FIELD_BEFORE_PORT.items():
+    check('%s — squads' % name, builds.mm_spec(name), spec)
+
+# The roster coupling. §4.4's cap is a hard rule, so it is an assertion; §4.2's
+# income is a schedule, so what is asserted is the *round* each build first
+# becomes affordable — a reprice that moves a build across a §33.6 snapshot is
+# then loud rather than silent. Frozen from the measurement, not derived here.
+EARLIEST_ROUND = {
+    'MilDeepRally': 9, 'MilDeepBodkin': 9, 'MagDeepChain': 8, 'MagDeepFrost': 8,
+    'BeastDeepSing': 9, 'BeastDeepStone': 8, 'MilMagic': 7, 'MilBeast': 7,
+    'MagicBeast': 7, 'PureMilitary': 7, 'PureMagic': 7, 'PureBeast': 7,
+    'SpearGuard12': 6, 'Direwolves12': 6, 'CommonHeavy': 4,
+}
+for name in builds.BUILDS:
+    n = builds.squad_count(name)
+    if n > builds.SQUAD_CAP:
+        failures.append('%s: %d squads exceeds the §4.4 cap of %d'
+                        % (name, n, builds.SQUAD_CAP))
+    check('%s — earliest affordable round' % name,
+          builds.earliest_round(name), EARLIEST_ROUND[name])
+    # §6 prerequisites: every unit fielded must be gated at or below the
+    # affinity its own branch investment reaches.
+    aff = builds.affinity(name)
+    for s in builds.BUILDS[name]['squads']:
+        u = roster.UNITS[s['unitType']]
+        if u['branch'] == 'Common':
+            continue
+        if aff.get(u['branch'], 0) < u['affinityTier']:
+            failures.append('%s: %s needs %s %d, build reaches %d'
+                            % (name, s['unitType'], u['branch'],
+                               u['affinityTier'], aff.get(u['branch'], 0)))
+        if 'track' in s and roster.TRACKS[s['track']]['unitType'] != s['unitType']:
+            failures.append('%s: track %s does not belong to %s'
+                            % (name, s['track'], s['unitType']))
+
 # --- report ------------------------------------------------------------------
 if failures:
     print('\nFAIL — %d mismatch(es):' % len(failures))
@@ -288,3 +352,5 @@ if failures:
 print('PASS — port is value-identical to roster19.U19 and to §13–§21.')
 print('  unexercised payloads (§34.3): %s' % ', '.join(roster.unexercised_payloads()))
 print('  authored at write-up (§34.4): %s' % ', '.join(roster.authored_at_write_up()))
+print('  build set: %d builds, layout v%d, sha256 %s'
+      % (len(builds.BUILDS), builds.LAYOUT_VERSION, builds.CONTENT_SHA256[:12]))

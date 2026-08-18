@@ -96,6 +96,12 @@ HOSTS = {
 
 
 def main():
+    """An unrecognised argument exits non-zero (determinism-v1 F-1, #49)."""
+    unknown = [a for a in sys.argv[1:] if a != '--v10']
+    if unknown:
+        print('unknown argument %r; this script takes --v10 or nothing'
+              % unknown[0], file=sys.stderr)
+        return 2
     if '--v10' in sys.argv:
         sim2.pick_target = pick_target_v10
         print("### Direwolves targeting: #10 rewrite (lowest-total-HP squad)\n")
@@ -116,7 +122,8 @@ def main():
                 mark = "  <== FLIPS: " + ", ".join(f"{o}->{wv}" for o, wv in flips) if flips else ""
                 print(f"      {t:16s} {s[0]}-{s[1]}"
                       + (f"-{s[2]}d" if s[2] else "") + mark)
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
