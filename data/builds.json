@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "layoutVersion": 2,
+  "provenance": "The fifteen representative builds the deployment layout rule is frozen against. Hand-authored from docs/spec/v0.4.md §29 and the categories it names, NOT generated from docs/analysis/matchup-math/roster19.py -- #26's rule is that generating data from the calculator launders the spec through the calculator, and #33.9 disqualifies the 1-D arm as an oracle. Version-locked to `layout` rather than to `roster`: #33 §7 makes the conformance table a pure function of (rule, builds), so the three carry one number. The filename carries none on purpose (#47) -- a `-vN` nothing reads would invite a fifth version number.",
+  "categories": [
+    "Common-heavy",
+    "Pure Military",
+    "Pure Magic",
+    "Pure Beast",
+    "Military/Magic",
+    "Military/Beast",
+    "Magic/Beast"
+  ],
+  "builds": {
+    "MilDeepRally": {
+      "group": "deep",
+      "category": "Pure Military",
+      "squads": [
+        {"unitType": "SpearGuard", "count": 4},
+        {"unitType": "Knights", "count": 2},
+        {"unitType": "BannerGuard", "count": 5, "track": "Rally", "trackStep": 3}
+      ]
+    },
+    "MilDeepBodkin": {
+      "group": "deep",
+      "category": "Pure Military",
+      "squads": [
+        {"unitType": "SpearGuard", "count": 5},
+        {"unitType": "Knights", "count": 2},
+        {"unitType": "Longbowmen", "count": 4, "track": "Bodkin", "trackStep": 3}
+      ]
+    },
+    "MagDeepChain": {
+      "group": "deep",
+      "category": "Pure Magic",
+      "squads": [
+        {"unitType": "EmberMage", "count": 4},
+        {"unitType": "Lifewarden", "count": 3},
+        {"unitType": "Stormcaller", "count": 4, "track": "ChainLightning", "trackStep": 3}
+      ]
+    },
+    "MagDeepFrost": {
+      "group": "deep",
+      "category": "Pure Magic",
+      "squads": [
+        {"unitType": "EmberMage", "count": 3},
+        {"unitType": "Lifewarden", "count": 4},
+        {"unitType": "Frostcaller", "count": 4, "track": "DeepFreeze", "trackStep": 3}
+      ]
+    },
+    "BeastDeepSing": {
+      "group": "deep",
+      "category": "Pure Beast",
+      "squads": [
+        {"unitType": "Direwolves", "count": 4},
+        {"unitType": "Troll", "count": 3},
+        {"unitType": "Griffin", "count": 5, "track": "Singling", "trackStep": 3}
+      ]
+    },
+    "BeastDeepStone": {
+      "group": "deep",
+      "category": "Pure Beast",
+      "squads": [
+        {"unitType": "Direwolves", "count": 5},
+        {"unitType": "Troll", "count": 3},
+        {"unitType": "Stonebacks", "count": 4, "track": "Stonehide", "trackStep": 3}
+      ]
+    },
+    "MilMagic": {
+      "group": "wide",
+      "category": "Military/Magic",
+      "squads": [
+        {"unitType": "SpearGuard", "count": 5},
+        {"unitType": "Knights", "count": 2},
+        {"unitType": "EmberMage", "count": 3},
+        {"unitType": "Lifewarden", "count": 2}
+      ]
+    },
+    "MilBeast": {
+      "group": "wide",
+      "category": "Military/Beast",
+      "squads": [
+        {"unitType": "SpearGuard", "count": 5},
+        {"unitType": "Knights", "count": 2},
+        {"unitType": "Direwolves", "count": 3},
+        {"unitType": "Troll", "count": 2}
+      ]
+    },
+    "MagicBeast": {
+      "group": "wide",
+      "category": "Magic/Beast",
+      "squads": [
+        {"unitType": "EmberMage", "count": 4},
+        {"unitType": "Lifewarden", "count": 2},
+        {"unitType": "Direwolves", "count": 4},
+        {"unitType": "Troll", "count": 2}
+      ]
+    },
+    "PureMilitary": {
+      "group": "pure",
+      "category": "Pure Military",
+      "squads": [
+        {"unitType": "SpearGuard", "count": 8},
+        {"unitType": "Knights", "count": 4}
+      ]
+    },
+    "PureMagic": {
+      "group": "pure",
+      "category": "Pure Magic",
+      "squads": [
+        {"unitType": "EmberMage", "count": 6},
+        {"unitType": "Lifewarden", "count": 6}
+      ]
+    },
+    "PureBeast": {
+      "group": "pure",
+      "category": "Pure Beast",
+      "squads": [
+        {"unitType": "Direwolves", "count": 7},
+        {"unitType": "Troll", "count": 5}
+      ]
+    },
+    "SpearGuard12": {
+      "group": "control",
+      "category": null,
+      "squads": [
+        {"unitType": "SpearGuard", "count": 12}
+      ]
+    },
+    "Direwolves12": {
+      "group": "control",
+      "category": null,
+      "squads": [
+        {"unitType": "Direwolves", "count": 12}
+      ]
+    },
+    "CommonHeavy": {
+      "group": "control",
+      "category": "Common-heavy",
+      "squads": [
+        {"unitType": "Militia", "count": 8},
+        {"unitType": "Hunters", "count": 4}
+      ]
+    }
+  }
+}

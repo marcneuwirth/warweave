@@ -146,6 +146,16 @@ subject is *Go generator vs committed CSV*, and a Python-vs-CSV version written 
 guard on a generator already scheduled for deletion. Its CI slot is reserved in
 `ci.yml`. See F-1.
 
+> **Landed at [#49](https://github.com/marcneuwirth/warweave/issues/49), and the reasoning
+> above was half right.** #49 fixed the comparator and cut `layout v2` but **did not** port
+> the rule to Go — that was explicitly out of its scope — so the Go generator is not yet a
+> subject. The check was written anyway, as
+> [`instruments/layout_regen_test.py`](layout_regen_test.py), because #49 also made the rule
+> a written spec with two witnesses: its subject is *witness vs committed table*, which
+> catches a hand-edit to either and pins v2's amendments. The reserved slot in `ci.yml` is
+> filled. The Go generator becomes a second subject when `runner/` lands, and the check does
+> not change when it does.
+
 ---
 
 ## 4. Trigger tiering
@@ -232,7 +242,9 @@ while resolving this ticket, which is the point: it is exactly the silent-pass f
 [#41](https://github.com/marcneuwirth/warweave/issues/41) exists to abolish, sitting in the
 half of the repo that *survives* `rm -rf runner/`. Two fixes, both routed to
 [#49](https://github.com/marcneuwirth/warweave/issues/49): dispatch `freeze`, and **make an
-unrecognised subcommand exit non-zero** in every control-arm CLI.
+unrecognised subcommand exit non-zero** in every control-arm CLI. **Both landed at #49**
+(layout-v2 F-5), which also made `freeze` refuse to write an infeasible table rather than
+print a violation count nobody reads.
 
 **F-2 — the trig ban does not buy cross-arch identity, because FMA does not need
 transcendentals.** [#25](https://github.com/marcneuwirth/warweave/issues/25) banned

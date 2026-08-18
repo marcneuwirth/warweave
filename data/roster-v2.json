@@ -265,7 +265,7 @@
       }
     },
     "notCarriedHere": {
-      "deploymentField": "field dimensions, deployment bands and the archetype coordinates are the separate versioned artifact docs/analysis/deployment-archetypes-v1.csv (#18).",
+      "deploymentField": "field dimensions, deployment bands and the deployment layout rule are the separate versioned artifact `layout v2` -- instruments/deployment-layout-v2.md (#18, #33, #49).",
       "p3Payloads": "doctrine (§9) effect payloads are P3 content and remain out of scope; the affinity ladder names them and nothing here authors what they do. AMENDED at roster v2: **hybrid-unlock (§10) payloads are no longer deferred.** #36 brought them into P2 scope because they need no action (§10: \"activate automatically... never purchased\") and because Affinity 3 gates precisely one thing in the whole spec — without them Instrument A's `weave` heading is inert by construction and §31's gate 11 is dead on arrival. Authored by #47; see affinityLadder.hybridUnlocks.",
       "buildSet": "§29's fifteen reference builds are `data/builds.json` — deliberately unversioned in the filename, carrying an internal `layoutVersion`, because they are governed by the `layout` number and not by this file's. #33 §7 version-locks the layout rule, the builds and the conformance table under one number since the table is a pure function of the other two. The builds are also roster-coupled — all fifteen are 11-12 squads against a gold budget under §6's prerequisites, so a reprice here can make a build illegal without touching `layout` — and that coupling is caught by a legality conformance test rather than by a version number, which is why there is no fifth version. Located by #47; authored by #49."
     }

@@ -1,18 +1,35 @@
-"""PROTOTYPE -- throwaway. Deployment archetype set for #18.
+"""WITNESS -- not the canonical rule. Deployment layout generator (#18, #49).
 
-Question it answers: can six *blind, role-keyed* layout rules place any of the
-fifteen #19 archetype builds legally on the 60m x 24m band, and does the set
-span the positional space the gates need to read?
+The canonical definition of the layout rule is the written spec
+`instruments/deployment-layout-v2.md` (#33 s2). This file is one of its two
+witnesses; `../deployment-archetypes-v2.csv` is the other. Where this file and
+the spec disagree, the spec is right and this file is a bug.
 
-Not production. Run:  python3 proto_archetypes.py [render|legal|span|all]
+It reads its inputs -- the roster and the fifteen builds -- from `data/`, so it
+cannot drift from what the Go runner reads.
 
-Field (#3 s1.7, s23): 60m x 80m, own band y in [0, 24], front edge y = 24,
-enemy front edge y = 56, gap 32m. Own control point (30, 12) (#6).
-Frontage = (front - 1) * sp  (#3 s1.3: Spear Guard 6x2.0 -> 10m).
+Run:  python3 proto_archetypes.py [render|legal|span|freeze|all]
+
+Field (s23): 60m x 80m, own band y in [0, 24], front edge y = 24, enemy front
+edge y = 56, gap 32m. Own control point (30, 12). The opposing side is the
+point reflection about (30, 40): (x, y) -> (60 - x, 80 - y).
+Frontage = (front - 1) * sp + 2 * rad, surface to surface per s13 -- so six
+Spear Guard span 64.8m and not the 60m #12 assumed.
 """
+import os
 import sys
 
-from roster19 import U19, FIELD
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                '..', '..', '..', 'data'))
+import builds as buildsdata
+
+from roster19 import U19
+
+# The build set is a versioned artifact in `data/` (#33 F-4, #47), not a dict
+# inside this witness. `FIELD` is re-exported unchanged so `roster19.py` and
+# this file cannot disagree about which fifteen builds exist.
+FIELD = buildsdata.field()
+LAYOUT_VERSION = buildsdata.LAYOUT_VERSION
 
 W, BAND = 60.0, 24.0          # field width, own band depth
 FRONT, BACK = 24.0, 0.0       # y of band front edge / baseline
@@ -41,8 +58,35 @@ ROLE_ORDER = {'hold': 0, 'none': 1, 'access': 2, 'reach': 3}
 
 
 def by_role(names):
-    """Front-to-back ordering. Hold leads, reach trails, access flanks."""
-    return sorted(names, key=lambda n: (ROLE_ORDER[U19[n]['role']], -frontage(n)))
+    """Front-to-back ordering. Hold leads, reach trails, access flanks.
+
+    The third key is load-bearing, not cosmetic (#33 F-2). Without it the
+    comparator ties for {SpearGuard, BannerGuard, Lifewarden} at hold/10.8m,
+    for {EmberMage, Frostcaller} at reach/4.8m, and for every repeated unit
+    type -- and Python's stable sort would then resolve those by input order,
+    which under runtime generation is *purchase order*. Where your Spear Guard
+    stand would depend on which round you bought them.
+    """
+    return sorted(names, key=lambda n: (ROLE_ORDER[U19[n]['role']],
+                                        -frontage(n), n))
+
+
+def clamp_y(n, y):
+    """The depth-aware band clamp (#33 F-3), a stated invariant of the rule.
+
+    Every squad's centre sits in `[depth/2, 24 - depth/2]`, so its footprint is
+    inside the band. s1.5 derived exactly this bound for rank *pitch* and never
+    applied it to the rear rank's offset from the baseline: `screened` and
+    `refused` park their rear rank at y = 1.0, and a Troll there (2.4m deep)
+    lands at y = -0.2, off the field. #33 measured 18 infeasible cells in a
+    36,000-cell random-army sweep; #49 re-ran it at its own seed and got 15,
+    all the same shape, all eliminated by this clamp.
+
+    Measured before adoption: it changes 0 of the 90 frozen cells, and fires on
+    none of them -- so this is the one path the conformance table cannot cover.
+    """
+    d = depth(n)
+    return min(max(y, d / 2), BAND - d / 2)
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +104,7 @@ def row(names, y, x0=0.0, x1=W, gap=None):
     x = x0 + max(g, (x1 - x0 - span - g * (len(names) - 1)) / 2)
     out = []
     for n in names:
-        out.append((n, x + frontage(n) / 2, y))
+        out.append((n, x + frontage(n) / 2, clamp_y(n, y)))
         x += frontage(n) + g
     return out
 
@@ -73,11 +117,14 @@ def rows(names, ys, x0=0.0, x1=W, step=5.0):
     behind `ys` at `step` metres until the army is placed or the band runs
     out -- running out of band is a real illegality and is reported.
     """
-    out, i, ys = [], 0, list(ys)
+    out, i, ys, last = [], 0, list(ys), None
     while i < len(names):
         if not ys:
-            ys = [out[-1][2] - step if out else 0.0]
+            ys = [last - step if last is not None else 0.0]
         y = ys.pop(0)
+        last = y                          # the *planned* rank, pre-clamp: an
+                                          # overflow rank must keep descending
+                                          # even where the clamp held a squad
         take, span = [], 0.0
         while i < len(names) and span + frontage(names[i]) <= (x1 - x0):
             span += frontage(names[i]) + 1.0
@@ -199,7 +246,15 @@ def stances(arch, place):
 # Legality
 # ---------------------------------------------------------------------------
 def violations(place):
-    """In-band and non-overlap checks (#3 s1.7). Returns list of strings."""
+    """In-band and non-overlap checks (#3 s1.7). Returns list of strings.
+
+    A non-empty return is the `deploymentInfeasible` cell outcome (#33 s5):
+    the harness records it for that (army, archetype) and continues, so the
+    6x6 mean for that army is taken over 35 cells rather than 36 and the
+    instrument sees the absence explicitly. Silently clamping whatever comes
+    out was rejected -- a clamp that shoves a Troll forward yields a cell
+    still labelled `screened` that is not one.
+    """
     bad = []
     boxes = []
     for n, x, y in place:
@@ -310,34 +365,93 @@ def cmd_span():
         print(f'  {army:14} line wall = {m["wall"]:.0f}% of 60m')
 
 
-def cmd_freeze(path='../deployment-archetypes-v1.csv'):
-    """Emit the frozen coordinate table -- the versioned artifact itself.
+CSV = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    '..', 'deployment-archetypes-v2.csv'))
 
-    The role-keyed rule in this file is a *generator*, run once. What is
-    versioned and what the runner reads is its output: one row per
-    (archetype, build, slot) with exact coordinates and a stance.
+
+def table():
+    """The conformance table, as a list of CSV lines including the header.
+
+    #33 s1 demoted this from *what the runner reads* to *what proves the
+    runner's generator is the same generator*: the Go generator regenerates
+    all 1,056 rows from the same two `data/` files and must match byte for
+    byte. `%.2f` is what makes byte-identity achievable.
+
+    It is a conformance table and not the artifact, so it cannot cover every
+    path a novel army takes. Measured (layout-v2 F-3): the overflow rank fires
+    on 12 of 90 cells and the name tiebreak on 12, but the band clamp fires on
+    none. That last one is why #33 put a `deploymentHash` on every battle row.
     """
     lines = ['archetype,build,slot,unit,x,y,stance']
-    bad = 0
     for army in FIELD:
         for a, fn in ARCHETYPES.items():
             place = fn(squads(army))
-            bad += len(violations(place))
             for i, ((n, x, y), s) in enumerate(zip(place, stances(a, place)), 1):
                 lines.append(f'{a},{army},{i},{n},{x:.2f},{y:.2f},{s}')
+    return lines
+
+
+def infeasible_cells():
+    """Every (build, archetype) the rule cannot place legally."""
+    out = []
+    for army in FIELD:
+        for a, fn in ARCHETYPES.items():
+            v = violations(fn(squads(army)))
+            if v:
+                out.append((army, a, v))
+    return out
+
+
+def cmd_freeze(path=CSV):
+    """Write the conformance table.
+
+    Refuses to write an infeasible table: s1.5's "all 90 cells are legal" is a
+    property of the fifteen rather than of the rule (#33 F-6), so it is checked
+    here rather than assumed.
+    """
+    bad = infeasible_cells()
+    if bad:
+        for army, a, v in bad:
+            print(f'  deploymentInfeasible {army}/{a}: {"; ".join(v)}')
+        print(f'REFUSING to write {path}: {len(bad)} infeasible cell(s)')
+        return 1
+    lines = table()
     with open(path, 'w') as f:
         f.write('\n'.join(lines) + '\n')
-    print(f'wrote {path}: {len(lines) - 1} rows, {bad} violations')
+    print(f'wrote {path}: {len(lines) - 1} rows, layout v{LAYOUT_VERSION}, '
+          f'0 infeasible cells')
     raiders = sum(1 for ln in lines if ln.endswith(',Raid'))
     holds = sum(1 for ln in lines if ln.endswith(',Hold'))
     print(f'  Raid {raiders}  Hold {holds}  Advance {len(lines) - 1 - raiders - holds}')
+    return 0
 
 
-if __name__ == '__main__':
-    cmd = sys.argv[1] if len(sys.argv) > 1 else 'all'
+COMMANDS = ('render', 'legal', 'span', 'freeze', 'all')
+
+
+def main(argv):
+    """An unrecognised subcommand exits non-zero (determinism-v1 F-1).
+
+    `freeze` was defined but never dispatched, so the one command a reader
+    would try to reproduce the versioned artifact fell through every branch
+    and the script exited 0 in silence -- the exact silent pass #41 exists to
+    abolish, in the half of the repo that survives `rm -rf runner/`.
+    """
+    cmd = argv[1] if len(argv) > 1 else 'all'
+    if cmd not in COMMANDS:
+        print(f'unknown subcommand {cmd!r}; expected one of '
+              f'{", ".join(COMMANDS)}', file=sys.stderr)
+        return 2
     if cmd in ('render', 'all'):
-        cmd_render(sys.argv[2] if len(sys.argv) > 2 else 'PureMilitary')
+        cmd_render(argv[2] if len(argv) > 2 else 'PureMilitary')
     if cmd in ('legal', 'all'):
         cmd_legal()
     if cmd in ('span', 'all'):
         cmd_span()
+    if cmd == 'freeze':
+        return cmd_freeze()
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

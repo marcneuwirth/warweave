@@ -66,8 +66,10 @@ data-driven; it pretends nothing.
   battle-damage terms, battle-end and pursuit windows and the control point, **plus** two
   values #36 ruled rather than quoted: the full-HP-reset rule and the 20-round `overrun`
   ceiling. Both are values a balance pass would change, which is this section's own test.
-- **Field and deployment coordinates** are the other versioned artifact,
-  [`docs/analysis/deployment-archetypes-v1.csv`](../docs/analysis/deployment-archetypes-v1.csv).
+- **Field and deployment coordinates** are the other versioned artifact, `layout v2` —
+  the rule in [`instruments/deployment-layout-v2.md`](../instruments/deployment-layout-v2.md)
+  and the conformance table in
+  [`docs/analysis/deployment-archetypes-v2.csv`](../docs/analysis/deployment-archetypes-v2.csv).
 - **§29's fifteen reference builds** are `data/builds.json` — located by
   [#47](https://github.com/marcneuwirth/warweave/issues/47), authored by
   [#49](https://github.com/marcneuwirth/warweave/issues/49). Deliberately **unversioned in
@@ -126,14 +128,15 @@ before and after the port produces byte-identical output.**
 
 ## 5. Versioning
 
-Versioned exactly like the deployment archetype set, and for the same reason: **a stat
-change invalidates prior measurements.**
+Versioned exactly like `layout`, and for the same reason: **a stat change invalidates prior
+measurements.**
 
 - The filename carries the version (`roster-v2.json`) and so does `rosterVersion` inside it.
 - **Any change to a value the kernel reads bumps the version.** Editing a `note`, a
   `specSection` or a citation does not.
-- Every recorded measurement names **`roster vN` alongside `archetypes vN`**. Neither
-  number alone identifies a result.
+- Every recorded measurement names **`roster vN` alongside `layout vN`**. Neither number
+  alone identifies a result. `layout` governs `builds.json` as well, which is why that file
+  carries `layoutVersion` and no version in its filename (#47).
 - The runner also logs the file's **SHA-256** (`roster.CONTENT_SHA256`) into every result
   record, so a version bump somebody forgot is still detectable after the fact.
 - **`schemaVersion` is a second, independent number.** It moves when the *shape* changes,

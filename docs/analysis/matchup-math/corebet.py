@@ -236,8 +236,19 @@ def exp_sweep():
 EXPERIMENTS = {'baseline': exp_baseline, 'reprice': exp_reprice, 'counters': exp_counters,
                'roles': exp_roles, 'sweep': exp_sweep}
 
-if __name__ == '__main__':
-    which = sys.argv[1] if len(sys.argv) > 1 else 'all'
+def main(argv=None):
+    """An unrecognised subcommand exits non-zero (determinism-v1 F-1, #49)."""
+    argv = sys.argv if argv is None else argv
+    which = argv[1] if len(argv) > 1 else 'all'
+    if which != 'all' and which not in EXPERIMENTS:
+        print('unknown subcommand %r; expected one of all, %s'
+              % (which, ', '.join(EXPERIMENTS)), file=sys.stderr)
+        return 2
     for name, fn in EXPERIMENTS.items():
         if which in ('all', name):
             fn()
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
