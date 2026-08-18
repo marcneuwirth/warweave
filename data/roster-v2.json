@@ -1,0 +1,2251 @@
+{
+  "schema": "warweave.roster",
+  "schemaVersion": 2,
+  "rosterVersion": 2,
+  "specSource": "docs/spec/v0.4.md",
+  "specVersion": "v0.4 (hardened)",
+  "authoredBy": "hand, from the spec — see data/README.md",
+  "provenanceLegend": {
+    "evidence": {
+      "measured": "the payload was implemented in the paper calculator (docs/analysis/matchup-math/) and live in the run that produced the archetype field",
+      "unexercised": "the payload is authored in the spec but was inert or absent in that run; its magnitude follows the §27.3 ladder by construction, not by measurement (§34.3)"
+    },
+    "authoredAtWriteUp": "true = the ⚠ flag of §18.1 / §34.4 — written during the spec write-up with no ticket behind it and no paper evidence at all. Six technologies carry it: Knights ×2, Lifewarden ×2, Troll ×2."
+  },
+  "constants": {
+    "economy": {
+      "startingGold": 400,
+      "income": {
+        "formula": "min(300 + 50 * (round - 2), 550)",
+        "base": 300,
+        "step": 50,
+        "plateau": 550,
+        "firstIncomeRound": 2,
+        "note": "Round 1 pays no income; startingGold stands in. §4.2."
+      },
+      "squadCap": 12,
+      "selling": {
+        "refundFraction": 0.5,
+        "salesPerRound": 2,
+        "preLockRefundFraction": 1.0,
+        "technologyRefund": null,
+        "trackStepRefund": null
+      },
+      "prices": {
+        "commonTechnology": 200,
+        "branchTechnology": 250,
+        "trackStepCosts": [
+          150,
+          200,
+          250
+        ],
+        "trackStepCumulative": [
+          150,
+          350,
+          600
+        ],
+        "unitCosts": "carried on each unit type below",
+        "slotCeiling": {
+          "value": 292,
+          "derivation": "R8 cumulative 3500 gold / 12-squad cap",
+          "note": "The price list is authored against this ceiling (§4.2, ADR-0049). Derived, recorded because the spec states it outright."
+        }
+      },
+      "cumulativeIncomeByRound": {
+        "1": 400,
+        "2": 700,
+        "3": 1050,
+        "4": 1450,
+        "5": 1900,
+        "6": 2400,
+        "7": 2950,
+        "8": 3500,
+        "9": 4050,
+        "10": 4600,
+        "11": 5150,
+        "12": 5700
+      }
+    },
+    "damageKernel": {
+      "specSection": "§22.1",
+      "armourCurveConstant": 100,
+      "bypassByDamageType": {
+        "physical": 0.0,
+        "magic": 0.5
+      },
+      "minimumFinalDamage": 1,
+      "floorApplications": 1,
+      "aoeCatch": {
+        "formula": "pi * r^2 / spacing^2",
+        "singleModelSquadsCatchNothing": true,
+        "specSection": "§22.4"
+      },
+      "overkillCarries": false,
+      "distanceMeasurement": "surface-to-surface between collision circles; squad-to-squad is nearest-model to nearest-model"
+    },
+    "combat": {
+      "flanking": {
+        "bonus": 0.25,
+        "frontalArcHalfAngleDegrees": 90,
+        "testedPer": "attacking model",
+        "specSection": "§23.2"
+      },
+      "stickiness": {
+        "rearArcDamageBreaksOnce": true,
+        "reacquireLockoutSeconds": 4.0,
+        "reacquireTarget": "nearest enemy squad",
+        "specSection": "§23.2"
+      },
+      "charging": {
+        "minApproachSeconds": 1.5,
+        "minApproachMetres": 6.0,
+        "contactRangeMetres": 4.0,
+        "contactDamageBonus": 0.5,
+        "reentryLockoutSeconds": 6.0,
+        "carriedBy": "the Charging chassis tag on access-role unit types",
+        "specSection": "§23.4"
+      },
+      "brace": {
+        "stationarySeconds": 1.0,
+        "incomingChargeDamageMultiplier": 0.5,
+        "firstContactAttackBonus": 0.5,
+        "endsAttackerCharging": true,
+        "ownedBy": [
+          "SpearGuard"
+        ],
+        "specSection": "§14 Brace"
+      },
+      "holdBreak": {
+        "controlPointExemptionRadiusMetres": 8.0,
+        "specSection": "§23.3"
+      }
+    },
+    "elemental": {
+      "specSection": "§11",
+      "allElementalDamageIsMagic": true,
+      "burning": {
+        "durationSeconds": 4.0,
+        "damagePerSecond": 10,
+        "damageType": "magic",
+        "damagePool": "outside the applying attack's offensive pool — flat and source-independent",
+        "regenerationReduction": 0.75,
+        "reapplicationRefreshes": true,
+        "stacksDamage": false
+      },
+      "chilled": {
+        "durationSeconds": 3.0,
+        "moveSpeedModifier": -0.2,
+        "secondApplicationWhileActiveCausesFrozen": true,
+        "consumedByFrozen": false
+      },
+      "frozen": {
+        "durationSeconds": 0.75,
+        "cannotMove": true,
+        "attackTimerPauses": true,
+        "tags": [
+          "HardControl"
+        ],
+        "exemptFromLargeHardControlDiscount": true,
+        "uptimeCeilingSingleTarget": 0.375
+      },
+      "hardControl": {
+        "immunitySecondsAfterExpiry": 1.25,
+        "largeDurationMultiplier": 0.5,
+        "largeDiscountLiveInV04": false,
+        "taggedStatuses": [
+          "Root",
+          "Stun",
+          "Frozen"
+        ],
+        "note": "Root and Stun have no v0.4 applier; §12 is retained inert."
+      },
+      "shatter": {
+        "bonus": 0.25,
+        "requires": "an attack tagged Heavy against a Frozen target",
+        "consumesFrozen": false,
+        "pool": "offensive"
+      },
+      "deepChill": {
+        "bonus": 0.25,
+        "requires": "magic damage against a Frozen target",
+        "requiresTag": null,
+        "pool": "offensive"
+      }
+    },
+    "projectiles": {
+      "specSection": "§22.7",
+      "homing": true,
+      "canMiss": false,
+      "fizzlesIfTargetDiesInFlight": true,
+      "aoeResolvesAt": "impact point",
+      "speedsMetresPerSecond": {
+        "arrow": 60,
+        "frostbolt": 35,
+        "stormBolt": 35,
+        "fireball": 30,
+        "thrownStone": 25
+      }
+    },
+    "magnitudeLadder": {
+      "specSection": "§27.3",
+      "bands": [
+        {
+          "upTo": 0.05,
+          "readsAs": "inert",
+          "example": "flat stat tweaks"
+        },
+        {
+          "around": 0.1,
+          "readsAs": "consistent, modest, never decisive",
+          "example": "Phalanx, Grand Strategy"
+        },
+        {
+          "around": 0.25,
+          "readsAs": "a window created and cashed",
+          "example": "Shatter, flanking"
+        },
+        {
+          "from": 0.4,
+          "readsAs": "flips a matchup",
+          "example": "Bodkin 3, the three branch counters"
+        }
+      ]
+    },
+    "match": {
+      "specSection": "§5",
+      "startingCommand": 100,
+      "roundStake": {
+        "formula": "5 + 2 * round",
+        "base": 5,
+        "step": 2
+      },
+      "stakeSplit": {
+        "battle": 0.7,
+        "objective": 0.3
+      },
+      "battleDamage": {
+        "integrityFloor": 0.75,
+        "integrityRange": 0.25,
+        "drawShareEachSide": 0.35,
+        "drawBandFraction": 0.05,
+        "note": "battleDamage = 0.7 * S(round) * (0.75 + 0.25 * winnerIntegrity), dealt to the round loser. §5.2."
+      },
+      "battleEnd": {
+        "timeoutSeconds": 90.0,
+        "pursuitSeconds": 20.0,
+        "note": "Battle ends on a wipe or at 90s, whichever first, subject to the pursuit phase; on a wipe it ends at wipe + 20s or 90s. controlShare denominates over the full duration including pursuit. §5.4."
+      },
+      "controlPoint": {
+        "positions": {
+          "sideA": [
+            30.0,
+            12.0
+          ],
+          "sideB": [
+            30.0,
+            68.0
+          ]
+        },
+        "separationMetres": 56.0,
+        "radiusMetres": 8.0,
+        "valueThresholdGold": 400,
+        "dwellSeconds": 3.0,
+        "note": "Contribution is per-model prorated: squad cost * (models within 8m / full model count). §5.5. separationMetres is **derived from the coordinates (68 - 12 = 56)**, not quoted: §5.5 says \"44m apart\" and its own points are 56m apart — see specDiscrepancies[\"control-point-separation\"]. raidTraverseMetres is the 44m §5.4 and §23.6 actually use — band front edge (y = 24) to the enemy point (y = 68).",
+        "raidTraverseMetres": 44.0
+      },
+      "armyPersistence": {
+        "ownershipPersists": true,
+        "damagePersists": false,
+        "note": "HP resets to full every battle; only ownership carries across rounds. A stated reading, not a spec quotation: §4 has no repair economy, §4.3 refunds cost with no HP term, and §5.2's integrity term would double-count. #36."
+      },
+      "roundCeiling": {
+        "maxRounds": 20,
+        "outcomeAtCeiling": "overrun",
+        "note": "No truncating cap. A match reaching 20 rounds records `overrun`, an explicit §31 gate-7 failure value, never a draw and never dropped. §5.3 never combines its neither-banks row with its pyrrhic-wins row; the combination gives 0.2625(N^2 + 6N) = 100 -> N ~ 17, reachable and outside every row it tabulates. #36."
+      }
+    },
+    "notCarriedHere": {
+      "deploymentField": "field dimensions, deployment bands and the archetype coordinates are the separate versioned artifact docs/analysis/deployment-archetypes-v1.csv (#18).",
+      "p3Payloads": "doctrine (§9) effect payloads are P3 content and remain out of scope; the affinity ladder names them and nothing here authors what they do. AMENDED at roster v2: **hybrid-unlock (§10) payloads are no longer deferred.** #36 brought them into P2 scope because they need no action (§10: \"activate automatically... never purchased\") and because Affinity 3 gates precisely one thing in the whole spec — without them Instrument A's `weave` heading is inert by construction and §31's gate 11 is dead on arrival. Authored by #47; see affinityLadder.hybridUnlocks.",
+      "buildSet": "§29's fifteen reference builds are `data/builds.json` — deliberately unversioned in the filename, carrying an internal `layoutVersion`, because they are governed by the `layout` number and not by this file's. #33 §7 version-locks the layout rule, the builds and the conformance table under one number since the table is a pure function of the other two. The builds are also roster-coupled — all fifteen are 11-12 squads against a gold budget under §6's prerequisites, so a reprice here can make a build illegal without touching `layout` — and that coupling is caught by a legality conformance test rather than by a version number, which is why there is no fifth version. Located by #47; authored by #49."
+    }
+  },
+  "affinityLadder": {
+    "specSection": "§7",
+    "gates": {
+      "0": "gateway unit type",
+      "2": "tier-2 unit type",
+      "4": "tier-3 row — an alpha and a beta unit type, both unlocked together",
+      "5": "doctrine"
+    },
+    "branches": {
+      "Military": {
+        "identity": "Coordinate",
+        "bestRole": "hold",
+        "0": "SpearGuard",
+        "2": "Knights",
+        "4alpha": "Longbowmen",
+        "4beta": "BannerGuard",
+        "5": {
+          "doctrine": "Grand Strategy",
+          "payload": "deferred to P3 — §9.2"
+        }
+      },
+      "Magic": {
+        "identity": "Combine",
+        "bestRole": "reach",
+        "0": "EmberMage",
+        "2": "Lifewarden",
+        "4alpha": "Stormcaller",
+        "4beta": "Frostcaller",
+        "5": {
+          "doctrine": "Arcane Resonance",
+          "payload": "deferred to P3 — §9.3"
+        }
+      },
+      "Beast": {
+        "identity": "Overwhelm",
+        "bestRole": "access",
+        "0": "Direwolves",
+        "2": "Troll",
+        "4alpha": "Stonebacks",
+        "4beta": "Griffin",
+        "5": {
+          "doctrine": "Apex Instinct",
+          "payload": "deferred to P3 — §9.4"
+        }
+      }
+    },
+    "hybridUnlocks": [
+      {
+        "requires": [
+          "Military 3",
+          "Magic 3"
+        ],
+        "name": "Enchanted Arms",
+        "specSection": "§10.1",
+        "evidence": "unexercised",
+        "authoredAtWriteUp": false,
+        "effects": [
+          {
+            "primitive": "DamageModifier",
+            "params": {
+              "offensive": 0.15
+            },
+            "scope": "allied Military-branch squads",
+            "predicate": {
+              "targetHasAnyStatus": [
+                "Burning",
+                "Chilled",
+                "Frozen"
+              ]
+            }
+          }
+        ],
+        "note": "§22.1 files Enchanted Arms in the offensive pool by name, so the bucket was never an open reading. §10.1 enumerates its beneficiaries — Spear Guard, Knights, Longbowmen, Banner Guard — so `scope` is branch membership, not a unit list: Militia and Hunters are Common, not Military. The predicate is per target model; the offensive pool is per attack (§22.1 step 1). That is only ambiguous for an attack hitting several models at once, and Ember Mage's fireball is the roster's sole AoE and is Magic-branch, so no Military attack meets it in P0–P2. Volley 3 makes it live in P3 (#47)."
+      },
+      {
+        "requires": [
+          "Military 3",
+          "Beast 3"
+        ],
+        "name": "Beastmastery",
+        "specSection": "§10.2",
+        "evidence": "unexercised",
+        "authoredAtWriteUp": false,
+        "effects": [
+          {
+            "primitive": "DamageModifier",
+            "params": {
+              "offensive": 0.15
+            },
+            "scope": "allied Beast-branch squads",
+            "predicate": {
+              "targetWithinMetresOfAlliedModel": {
+                "radiusMetres": 6.0,
+                "branch": "Military"
+              }
+            }
+          }
+        ],
+        "note": "§25 pre-ratifies the encoding: \"all three branch counters, flanking, and Beastmastery's zone are `DamageModifier` on a predicate\". The 6m is measured **model to model** — any living enemy model within 6m of any living model of any allied Military-branch squad — not from a squad centre: Spear Guard and Banner Guard are 6x1 lines at 10.8m frontage, so a centre reading would cover barely half of the line projecting it. Model-to-model also matches #43's 8m control-point exemption, giving the kernel one radius idiom, and makes the zone decay under attrition rather than jump when a centre crosses the line. Source inclusion needs no rule: a Military model is at distance 0 from itself. NOTE this is a target *predicate*, not an `Aura`: the +15% reaches every Beast squad unconditionally and the radius qualifies the enemy being hit. `Aura` selects recipients, and all seven of its roster referents are P3 (#47)."
+      },
+      {
+        "requires": [
+          "Magic 3",
+          "Beast 3"
+        ],
+        "name": "Primal Magic",
+        "specSection": "§10.3",
+        "evidence": "unexercised",
+        "authoredAtWriteUp": false,
+        "effects": [
+          {
+            "primitive": "RefreshStatus",
+            "params": {
+              "statuses": [
+                "Burning",
+                "Chilled"
+              ],
+              "seconds": 0.5,
+              "clampPerSecondPer": "target"
+            },
+            "scope": "allied Beast-branch squads"
+          }
+        ],
+        "note": "The clamp is **global per target** — one refresh per target per second however many Beast squads or models attack it. Per attacking model gives Direwolves 8 models at 0.9s cadence ~8 refreshes/s = +4s per second of decay, and per attacking squad gives MilBeast's five Beast squads +2.5s/s; both hold a status indefinitely and contradict §10.3's own \"it always runs out\" and its exact doubling (Chill 3 -> 6s, Burning 4 -> 8s). Global per target also makes §10.3's \"squad size is not the limiting factor\" literally true. A refresh extends **every** qualifying status on the target, because refreshing only one demands an authored Burning-vs-Chilled priority with no spec basis, and §10.3 states both doublings unqualified. A refresh is a **deadline extension, never an application** — §11.2 makes a second application of Chilled cause Frozen and §10.3 says Beast attacks cannot create Frozen directly — which is why `ApplyStatus` cannot express it. It reaches Chilled running under Frozen (§11.4's only referent, and the whole mechanism) and never Frozen itself, so #30's 37.5% uptime invariant is untouched. No cap on total extension: Chill at 6s is twice its authored 3s (#47)."
+      }
+    ],
+    "roleRotation": {
+      "specSection": "§1.1, ADR-0043",
+      "edges": [
+        {
+          "winner": "Magic",
+          "loser": "Military",
+          "via": "reach"
+        },
+        {
+          "winner": "Military",
+          "loser": "Beast",
+          "via": "hold"
+        },
+        {
+          "winner": "Beast",
+          "loser": "Magic",
+          "via": "access"
+        }
+      ]
+    }
+  },
+  "unitTypes": {
+    "Militia": {
+      "displayName": "Militia",
+      "branch": "Common",
+      "affinityTier": 0,
+      "fork": null,
+      "role": null,
+      "rung": null,
+      "cost": 100,
+      "specSection": "§13",
+      "formation": {
+        "models": 8,
+        "frontRank": 4,
+        "ranks": 2,
+        "spacingMetres": 2.0,
+        "collisionRadiusMetres": 0.4
+      },
+      "hpPerModel": 100,
+      "armour": 0,
+      "attack": {
+        "damage": 30,
+        "damageType": "physical",
+        "cooldownSeconds": 1.0,
+        "kind": "melee",
+        "reachMetres": 1.0,
+        "tags": []
+      },
+      "movement": {
+        "speedMetresPerSecond": 4.5,
+        "turnRateDegreesPerSecond": 120
+      },
+      "tags": [],
+      "regenerationPerSecond": 0,
+      "targeting": "default",
+      "technologies": [
+        "Conscription",
+        "PitchAndTorch"
+      ]
+    },
+    "Hunters": {
+      "displayName": "Hunters",
+      "branch": "Common",
+      "affinityTier": 0,
+      "fork": null,
+      "role": null,
+      "rung": null,
+      "cost": 150,
+      "specSection": "§13",
+      "formation": {
+        "models": 5,
+        "frontRank": 5,
+        "ranks": 1,
+        "spacingMetres": 2.0,
+        "collisionRadiusMetres": 0.4
+      },
+      "hpPerModel": 120,
+      "armour": 0,
+      "attack": {
+        "damage": 42,
+        "damageType": "physical",
+        "cooldownSeconds": 1.6,
+        "kind": "ranged",
+        "rangeMetres": 12.0,
+        "projectile": "arrow",
+        "tags": []
+      },
+      "movement": {
+        "speedMetresPerSecond": 4.0,
+        "turnRateDegreesPerSecond": 120
+      },
+      "tags": [],
+      "regenerationPerSecond": 0,
+      "targeting": "default",
+      "technologies": [
+        "LooseFormation",
+        "RapidFire"
+      ]
+    },
+    "SpearGuard": {
+      "displayName": "Spear Guard",
+      "branch": "Military",
+      "affinityTier": 0,
+      "fork": null,
+      "role": "hold",
+      "rung": "best",
+      "cost": 200,
+      "specSection": "§14",
+      "formation": {
+        "models": 6,
+        "frontRank": 6,
+        "ranks": 1,
+        "spacingMetres": 2.0,
+        "collisionRadiusMetres": 0.4
+      },
+      "hpPerModel": 210,
+      "armour": 30,
+      "attack": {
+        "damage": 48,
+        "damageType": "physical",
+        "cooldownSeconds": 1.5,
+        "kind": "melee",
+        "reachMetres": 2.2,
+        "tags": []
+      },
+      "movement": {
+        "speedMetresPerSecond": 4.5,
+        "turnRateDegreesPerSecond": 120
+      },
+      "tags": [],
+      "regenerationPerSecond": 0,
+      "targeting": "default",
+      "behaviours": [
+        "Brace"
+      ],
+      "technologies": [
+        "Phalanx",
+        "HookedSpears"
+      ]
+    },
+    "Knights": {
+      "displayName": "Knights",
+      "branch": "Military",
+      "affinityTier": 2,
+      "fork": null,
+      "role": "access",
+      "rung": "adequate",
+      "cost": 275,
+      "specSection": "§14",
+      "formation": {
+        "models": 4,
+        "frontRank": 4,
+        "ranks": 1,
+        "spacingMetres": 2.5,
+        "collisionRadiusMetres": 0.6
+      },
+      "hpPerModel": 260,
+      "armour": 30,
+      "attack": {
+        "damage": 62,
+        "damageType": "physical",
+        "cooldownSeconds": 1.6,
+        "kind": "melee",
+        "reachMetres": 1.8,
+        "tags": []
+      },
+      "movement": {
+        "speedMetresPerSecond": 6.5,
+        "turnRateDegreesPerSecond": 120
+      },
+      "tags": [
+        "Charging"
+      ],
+      "regenerationPerSecond": 0,
+      "targeting": "accessCull",
+      "technologies": [
+        "LanceCharge",
+        "Barding"
+      ]
+    },
+    "Longbowmen": {
+      "displayName": "Longbowmen",
+      "branch": "Military",
+      "affinityTier": 4,
+      "fork": "alpha",
+      "role": "reach",
+      "rung": "weak",
+      "cost": 350,
+      "specSection": "§14",
+      "formation": {
+        "models": 5,
+        "frontRank": 5,
+        "ranks": 1,
+        "spacingMetres": 2.0,
+        "collisionRadiusMetres": 0.4
+      },
+      "hpPerModel": 195,
+      "armour": 15,
+      "attack": {
+        "damage": 58,
+        "damageType": "physical",
+        "cooldownSeconds": 2.4,
+        "kind": "ranged",
+        "rangeMetres": 14.0,
+        "projectile": "arrow",
+        "tags": [
+          "Heavy"
+        ]
+      },
+      "movement": {
+        "speedMetresPerSecond": 4.0,
+        "turnRateDegreesPerSecond": 120
+      },
+      "tags": [],
+      "regenerationPerSecond": 0,
+      "targeting": "default",
+      "tracks": [
+        "Bodkin",
+        "Volley"
+      ]
+    },
+    "BannerGuard": {
+      "displayName": "Banner Guard",
+      "branch": "Military",
+      "affinityTier": 4,
+      "fork": "beta",
+      "role": "hold",
+      "rung": "capstone",
+      "cost": 350,
+      "specSection": "§14",
+      "formation": {
+        "models": 6,
+        "frontRank": 6,
+        "ranks": 1,
+        "spacingMetres": 2.0,
+        "collisionRadiusMetres": 0.4
+      },
+      "hpPerModel": 300,
+      "armour": 40,
+      "attack": {
+        "damage": 52,
+        "damageType": "physical",
+        "cooldownSeconds": 1.5,
+        "kind": "melee",
+        "reachMetres": 2.2,
+        "tags": []
+      },
+      "movement": {
+        "speedMetresPerSecond": 4.0,
+        "turnRateDegreesPerSecond": 120
+      },
+      "tags": [],
+      "regenerationPerSecond": 0,
+      "targeting": "default",
+      "tracks": [
+        "Rally",
+        "Oath"
+      ]
+    },
+    "EmberMage": {
+      "displayName": "Ember Mage",
+      "branch": "Magic",
+      "affinityTier": 0,
+      "fork": null,
+      "role": "reach",
+      "rung": "best",
+      "cost": 200,
+      "specSection": "§15",
+      "formation": {
+        "models": 3,
+        "frontRank": 3,
+        "ranks": 1,
+        "spacingMetres": 2.0,
+        "collisionRadiusMetres": 0.4
+      },
+      "hpPerModel": 150,
+      "armour": 0,
+      "attack": {
+        "damage": 95,
+        "damageType": "magic",
+        "cooldownSeconds": 2.25,
+        "kind": "ranged",
+        "rangeMetres": 26.0,
+        "projectile": "fireball",
+        "tags": [],
+        "splash": {
+          "radiusMetres": 2.5,
+          "falloff": 0.5
+        },
+        "appliesStatus": [
+          "Burning"
+        ]
+      },
+      "movement": {
+        "speedMetresPerSecond": 4.0,
+        "turnRateDegreesPerSecond": 180
+      },
+      "tags": [],
+      "regenerationPerSecond": 0,
+      "targeting": "default",
+      "technologies": [
+        "Firestorm",
+        "FocusedFlame"
+      ]
+    },
+    "Lifewarden": {
+      "displayName": "Lifewarden",
+      "branch": "Magic",
+      "affinityTier": 2,
+      "fork": null,
+      "role": "hold",
+      "rung": "adequate",
+      "cost": 250,
+      "specSection": "§15",
+      "formation": {
+        "models": 6,
+        "frontRank": 6,
+        "ranks": 1,
+        "spacingMetres": 2.0,
+        "collisionRadiusMetres": 0.4
+      },
+      "hpPerModel": 165,
+      "armour": 20,
+      "attack": {
+        "damage": 38,
+        "damageType": "magic",
+        "cooldownSeconds": 1.5,
+        "kind": "melee",
+        "reachMetres": 2.2,
+        "tags": []
+      },
+      "movement": {
+        "speedMetresPerSecond": 4.0,
+        "turnRateDegreesPerSecond": 120
+      },
+      "tags": [],
+      "regenerationPerSecond": 0,
+      "targeting": "default",
+      "healsNothing": true,
+      "technologies": [
+        "WardingChant",
+        "Thornmail"
+      ]
+    },
+    "Stormcaller": {
+      "displayName": "Stormcaller",
+      "branch": "Magic",
+      "affinityTier": 4,
+      "fork": "alpha",
+      "role": "access",
+      "rung": "weak",
+      "cost": 325,
+      "specSection": "§15",
+      "formation": {
+        "models": 3,
+        "frontRank": 3,
+        "ranks": 1,
+        "spacingMetres": 2.0,
+        "collisionRadiusMetres": 0.4
+      },
+      "hpPerModel": 210,
+      "armour": 0,
+      "attack": {
+        "damage": 70,
+        "damageType": "magic",
+        "cooldownSeconds": 2.0,
+        "kind": "ranged",
+        "rangeMetres": 15.0,
+        "projectile": "stormBolt",
+        "tags": []
+      },
+      "movement": {
+        "speedMetresPerSecond": 4.0,
+        "turnRateDegreesPerSecond": 180
+      },
+      "tags": [],
+      "regenerationPerSecond": 0,
+      "targeting": "default",
+      "appliesShocked": false,
+      "chains": false,
+      "note": "Access-rung by role, but it reaches past the line rather than running around it — targeting stays default, not accessCull (§15).",
+      "tracks": [
+        "ChainLightning",
+        "Skyfall"
+      ]
+    },
+    "Frostcaller": {
+      "displayName": "Frostcaller",
+      "branch": "Magic",
+      "affinityTier": 4,
+      "fork": "beta",
+      "role": "reach",
+      "rung": "capstone",
+      "cost": 325,
+      "specSection": "§15",
+      "formation": {
+        "models": 3,
+        "frontRank": 3,
+        "ranks": 1,
+        "spacingMetres": 2.0,
+        "collisionRadiusMetres": 0.4
+      },
+      "hpPerModel": 160,
+      "armour": 0,
+      "attack": {
+        "damage": 115,
+        "damageType": "magic",
+        "cooldownSeconds": 1.8,
+        "kind": "ranged",
+        "rangeMetres": 24.0,
+        "projectile": "frostbolt",
+        "tags": [],
+        "appliesStatus": [
+          "Chilled"
+        ],
+        "statusTarget": "model"
+      },
+      "movement": {
+        "speedMetresPerSecond": 4.0,
+        "turnRateDegreesPerSecond": 180
+      },
+      "tags": [],
+      "regenerationPerSecond": 0,
+      "targeting": "defaultExceptFrozen",
+      "tracks": [
+        "DeepFreeze",
+        "FrostArmor"
+      ]
+    },
+    "Direwolves": {
+      "displayName": "Direwolves",
+      "branch": "Beast",
+      "affinityTier": 0,
+      "fork": null,
+      "role": "access",
+      "rung": "best",
+      "cost": 200,
+      "specSection": "§16",
+      "formation": {
+        "models": 8,
+        "frontRank": 4,
+        "ranks": 2,
+        "spacingMetres": 2.0,
+        "collisionRadiusMetres": 0.5
+      },
+      "hpPerModel": 125,
+      "armour": 0,
+      "attack": {
+        "damage": 34,
+        "damageType": "physical",
+        "cooldownSeconds": 0.9,
+        "kind": "melee",
+        "reachMetres": 1.0,
+        "tags": []
+      },
+      "movement": {
+        "speedMetresPerSecond": 7.5,
+        "turnRateDegreesPerSecond": 120
+      },
+      "tags": [
+        "Charging",
+        "Predation"
+      ],
+      "regenerationPerSecond": 0,
+      "targeting": "accessCull",
+      "technologies": [
+        "PackHunter",
+        "Pounce"
+      ]
+    },
+    "Troll": {
+      "displayName": "Troll",
+      "branch": "Beast",
+      "affinityTier": 2,
+      "fork": null,
+      "role": "reach",
+      "rung": "adequate",
+      "cost": 225,
+      "specSection": "§16",
+      "formation": {
+        "models": 2,
+        "frontRank": 2,
+        "ranks": 1,
+        "spacingMetres": 3.0,
+        "collisionRadiusMetres": 1.2
+      },
+      "hpPerModel": 520,
+      "armour": 25,
+      "attack": {
+        "damage": 120,
+        "damageType": "physical",
+        "cooldownSeconds": 2.0,
+        "kind": "ranged",
+        "rangeMetres": 19.0,
+        "projectile": "thrownStone",
+        "tags": [
+          "Heavy"
+        ],
+        "attacksWhileClosing": true,
+        "altersMovementOrTargetSelection": false,
+        "meleeSharesTheAttackProfile": true
+      },
+      "movement": {
+        "speedMetresPerSecond": 3.5,
+        "turnRateDegreesPerSecond": 90
+      },
+      "tags": [
+        "Large"
+      ],
+      "regenerationPerSecond": 25.0,
+      "targeting": "default",
+      "technologies": [
+        "QuarryStones",
+        "ThickHide"
+      ]
+    },
+    "Stonebacks": {
+      "displayName": "Stonebacks",
+      "branch": "Beast",
+      "affinityTier": 4,
+      "fork": "alpha",
+      "role": "hold",
+      "rung": "weak",
+      "cost": 300,
+      "specSection": "§16",
+      "formation": {
+        "models": 4,
+        "frontRank": 4,
+        "ranks": 1,
+        "spacingMetres": 2.5,
+        "collisionRadiusMetres": 0.6
+      },
+      "hpPerModel": 200,
+      "armour": 20,
+      "attack": {
+        "damage": 55,
+        "damageType": "physical",
+        "cooldownSeconds": 1.8,
+        "kind": "melee",
+        "reachMetres": 2.4,
+        "tags": []
+      },
+      "movement": {
+        "speedMetresPerSecond": 4.0,
+        "turnRateDegreesPerSecond": 120
+      },
+      "tags": [],
+      "regenerationPerSecond": 0,
+      "targeting": "default",
+      "tracks": [
+        "Stonehide",
+        "Bulwark"
+      ]
+    },
+    "Griffin": {
+      "displayName": "Griffin",
+      "branch": "Beast",
+      "affinityTier": 4,
+      "fork": "beta",
+      "role": "access",
+      "rung": "capstone",
+      "cost": 300,
+      "specSection": "§16",
+      "formation": {
+        "models": 3,
+        "frontRank": 3,
+        "ranks": 1,
+        "spacingMetres": 2.5,
+        "collisionRadiusMetres": 0.6
+      },
+      "hpPerModel": 300,
+      "armour": 10,
+      "attack": {
+        "damage": 72,
+        "damageType": "physical",
+        "cooldownSeconds": 1.4,
+        "kind": "melee",
+        "reachMetres": 1.6,
+        "tags": []
+      },
+      "movement": {
+        "speedMetresPerSecond": 9.0,
+        "turnRateDegreesPerSecond": 120
+      },
+      "tags": [
+        "Charging"
+      ],
+      "regenerationPerSecond": 0,
+      "targeting": "accessCull",
+      "flies": false,
+      "tracks": [
+        "Singling",
+        "Talons"
+      ]
+    }
+  },
+  "technologies": {
+    "Conscription": {
+      "unitType": "Militia",
+      "specSection": "§18",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 200,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "ModelCount",
+              "params": {
+                "add": 3
+              }
+            },
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": -0.1
+              },
+              "scope": "self"
+            },
+            {
+              "primitive": "ArmorModifier",
+              "params": {
+                "hpMultiplier": 0.85
+              },
+              "scope": "self",
+              "note": "−15% HP per model. Recorded under a health modifier, not armour; §25 has no HealthModifier primitive and this is the only user."
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false,
+      "note": "The pool's one model-count effect and its purest cap relief (ADR-0031)."
+    },
+    "PitchAndTorch": {
+      "unitType": "Militia",
+      "specSection": "§18",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 200,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": 0.3
+              },
+              "predicate": {
+                "targetBranch": "Beast"
+              }
+            },
+            {
+              "primitive": "ApplyStatus",
+              "params": {
+                "status": "Burning",
+                "durationSeconds": 2.0
+              },
+              "predicate": {
+                "targetBranch": "Beast",
+                "targetTag": "Large"
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    },
+    "LooseFormation": {
+      "unitType": "Hunters",
+      "specSection": "§18",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 200,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "FormationSpacing",
+              "params": {
+                "multiplier": 1.6,
+                "resultingSpacingMetres": 3.2
+              },
+              "scope": "self"
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false,
+      "note": "Under geometric AoE catch the spacing increase IS the resistance; the original flat −20% AoE-received clause is retired as double-counting."
+    },
+    "RapidFire": {
+      "unitType": "Hunters",
+      "specSection": "§18",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 200,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "AttackRateModifier",
+              "params": {
+                "cooldownMultiplier": 0.75
+              },
+              "scope": "self"
+            },
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": -0.15
+              },
+              "scope": "self"
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    },
+    "Phalanx": {
+      "unitType": "SpearGuard",
+      "specSection": "§19.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "defensive": 0.2
+              },
+              "predicate": {
+                "incoming": "frontal physical"
+              }
+            },
+            {
+              "primitive": "FormationSpacing",
+              "params": {
+                "multiplier": 0.8,
+                "resultingSpacingMetres": 1.6
+              },
+              "scope": "self"
+            },
+            {
+              "primitive": "MoveSpeedModifier",
+              "params": {
+                "turnRateMultiplier": 0.8,
+                "resultingTurnRateDegreesPerSecond": 96
+              },
+              "scope": "self"
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    },
+    "HookedSpears": {
+      "unitType": "SpearGuard",
+      "specSection": "§19.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "TargetTagBonus",
+              "params": {
+                "offensive": 0.45
+              },
+              "predicate": {
+                "targetTag": "Large"
+              }
+            },
+            {
+              "primitive": "TargetTagBonus",
+              "params": {
+                "offensive": -0.1
+              },
+              "predicate": {
+                "targetTag": "Small"
+              }
+            },
+            {
+              "primitive": "GrantAttackTag",
+              "params": {
+                "tag": "Heavy"
+              }
+            },
+            {
+              "primitive": "TargetPriorityModifier",
+              "params": {
+                "prefer": "Large"
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false,
+      "note": "Heavy is the load-bearing half — it is what lets a Military line cash a Magic freeze. The Large clause has one referent in v0.4 (§34.5)."
+    },
+    "LanceCharge": {
+      "unitType": "Knights",
+      "specSection": "§19.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "chargingContactBonus": 0.8,
+                "replacesBase": 0.5
+              }
+            },
+            {
+              "primitive": "CooldownAbility",
+              "params": {
+                "chargingReentryLockoutSeconds": 4.0,
+                "replacesBase": 6.0
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": true
+    },
+    "Barding": {
+      "unitType": "Knights",
+      "specSection": "§19.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "ArmorModifier",
+              "params": {
+                "add": 20
+              },
+              "scope": "self"
+            },
+            {
+              "primitive": "MoveSpeedModifier",
+              "params": {
+                "multiplier": 0.9
+              },
+              "scope": "self"
+            },
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "chargingMinApproachMetres": 8.0,
+                "replacesBase": 6.0
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": true
+    },
+    "Firestorm": {
+      "unitType": "EmberMage",
+      "specSection": "§20.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "EveryNthAttack",
+              "params": {
+                "n": 4,
+                "areaRadiusMetres": 5.0,
+                "damageMultiplier": 0.7
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false,
+      "note": "Catch is effectively spacing-insensitive (7 models at every roster spacing) — the answer Loose Formation cannot answer, falling out of the geometry."
+    },
+    "FocusedFlame": {
+      "unitType": "EmberMage",
+      "specSection": "§20.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "AreaZone",
+              "params": {
+                "splashRadiusMetres": 1.25,
+                "replacesBase": 2.5
+              }
+            },
+            {
+              "primitive": "TargetTagBonus",
+              "params": {
+                "offensive": 0.8
+              },
+              "predicate": {
+                "targetTag": "Large"
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    },
+    "WardingChant": {
+      "unitType": "Lifewarden",
+      "specSection": "§20.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Aura",
+              "params": {
+                "radiusMetres": 4.0,
+                "target": "allied models"
+              },
+              "grants": {
+                "primitive": "DamageModifier",
+                "params": {
+                  "defensive": 0.15
+                },
+                "predicate": {
+                  "incomingDamageType": "magic"
+                }
+              }
+            },
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": -0.15
+              },
+              "scope": "self"
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": true
+    },
+    "Thornmail": {
+      "unitType": "Lifewarden",
+      "specSection": "§20.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "OnEngage",
+              "params": {
+                "reflectDamage": 12,
+                "damageType": "magic",
+                "trigger": "per landed hit by an attacker within reach"
+              }
+            },
+            {
+              "primitive": "ArmorModifier",
+              "params": {
+                "add": 10
+              },
+              "scope": "self"
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": true
+    },
+    "PackHunter": {
+      "unitType": "Direwolves",
+      "specSection": "§21.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensivePerAdditionalAttackerOnSameTarget": 0.08,
+                "maximum": 0.32
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false,
+      "note": "Live because of §24.2's culling rule — a squad that culls concentrates by construction."
+    },
+    "Pounce": {
+      "unitType": "Direwolves",
+      "specSection": "§21.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "OnEngage",
+              "params": {
+                "leapMetres": 4.0,
+                "throughUnitCollision": true,
+                "oncePerBattle": true
+              }
+            },
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": 0.25
+              },
+              "predicate": {
+                "firstHit": true
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false,
+      "note": "Measures zero in a one-dimensional model and is kept precisely because that model is blind to what it does — a screen bypass, routed to P1/P2 (ADR-0034)."
+    },
+    "QuarryStones": {
+      "unitType": "Troll",
+      "specSection": "§21.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "RangeModifier",
+              "params": {
+                "rangeMetres": 23.0,
+                "replacesBase": 19.0
+              }
+            },
+            {
+              "primitive": "AreaZone",
+              "params": {
+                "splashRadiusMetres": 1.0,
+                "falloff": 0.5
+              }
+            },
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": -0.15
+              },
+              "predicate": {
+                "attackKind": "melee"
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": true
+    },
+    "ThickHide": {
+      "unitType": "Troll",
+      "specSection": "§21.1",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "ArmorModifier",
+              "params": {
+                "add": 20
+              },
+              "scope": "self"
+            },
+            {
+              "primitive": "Regeneration",
+              "params": {
+                "perSecond": 35.0,
+                "replacesBase": 25.0
+              },
+              "scope": "self"
+            },
+            {
+              "primitive": "AttackRateModifier",
+              "params": {
+                "cooldownSeconds": 2.4,
+                "replacesBase": 2.0
+              },
+              "predicate": {
+                "attackKind": "ranged"
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": true
+    }
+  },
+  "tracks": {
+    "Bodkin": {
+      "unitType": "Longbowmen",
+      "specSection": "§19.3",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "ArmorPenetration",
+              "params": {
+                "add": 20
+              }
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "ArmorPenetration",
+              "params": {
+                "add": 40
+              }
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "ArmorPenetration",
+              "params": {
+                "add": 60
+              }
+            },
+            {
+              "primitive": "RemoveAttackTag",
+              "params": {
+                "tag": "Heavy"
+              }
+            },
+            {
+              "primitive": "TargetPriorityModifier",
+              "params": {
+                "prefer": "armoured"
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false,
+      "note": "Step 3 trading Heavy away is the one place a player deliberately gives up Shatter access."
+    },
+    "Volley": {
+      "unitType": "Longbowmen",
+      "specSection": "§19.3",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "AreaZone",
+              "params": {
+                "splashRadiusMetres": 0.75,
+                "falloff": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "AreaZone",
+              "params": {
+                "splashRadiusMetres": 1.1,
+                "falloff": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "AreaZone",
+              "params": {
+                "splashRadiusMetres": 1.5,
+                "falloff": 0.5
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    },
+    "Rally": {
+      "unitType": "BannerGuard",
+      "specSection": "§19.2",
+      "carriesBranchCounter": {
+        "step": 3,
+        "counters": "Beast",
+        "property": "closing speed (Charging)"
+      },
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Aura",
+              "params": {
+                "radiusMetres": 6.0,
+                "target": "allied Military-branch squads"
+              },
+              "grants": {
+                "primitive": "EffectiveHealthModifier",
+                "params": {
+                  "bonus": 0.08
+                }
+              }
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Aura",
+              "params": {
+                "radiusMetres": 6.0,
+                "target": "allied Military-branch squads"
+              },
+              "grants": {
+                "primitive": "EffectiveHealthModifier",
+                "params": {
+                  "bonus": 0.15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "measured",
+          "name": "Braced Line",
+          "effects": [
+            {
+              "primitive": "Aura",
+              "params": {
+                "radiusMetres": 6.0,
+                "target": "allied Military-branch squads"
+              },
+              "grants": {
+                "primitive": "DamageModifier",
+                "params": {
+                  "defensive": 0.4
+                },
+                "predicate": {
+                  "attackerState": "Charging"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    },
+    "Oath": {
+      "unitType": "BannerGuard",
+      "specSection": "§19.2",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Aura",
+              "params": {
+                "radiusMetres": 6.0,
+                "target": "allied Military-branch squads"
+              },
+              "grants": {
+                "primitive": "DamageModifier",
+                "params": {
+                  "offensive": 0.08
+                }
+              }
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Aura",
+              "params": {
+                "radiusMetres": 6.0,
+                "target": "allied Military-branch squads"
+              },
+              "grants": {
+                "primitive": "DamageModifier",
+                "params": {
+                  "offensive": 0.15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Aura",
+              "params": {
+                "radiusMetres": 6.0,
+                "target": "allied Military-branch squads"
+              },
+              "grants": {
+                "primitive": "DamageModifier",
+                "params": {
+                  "offensive": 0.25
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    },
+    "ChainLightning": {
+      "unitType": "Stormcaller",
+      "specSection": "§20.2",
+      "carriesBranchCounter": {
+        "step": 3,
+        "counters": "Military",
+        "property": "formation coherence"
+      },
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "AreaZone",
+              "params": {
+                "splashRadiusMetres": 1.5,
+                "falloff": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "AreaZone",
+              "params": {
+                "splashRadiusMetres": 2.2,
+                "falloff": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "AreaZone",
+              "params": {
+                "splashRadiusMetres": 3.2,
+                "falloff": 0.5
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    },
+    "Skyfall": {
+      "unitType": "Stormcaller",
+      "specSection": "§20.2",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": 0.15
+              },
+              "predicate": {
+                "targetSquadDistanceAtLeastMetres": 10.0
+              }
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": 0.28
+              },
+              "predicate": {
+                "targetSquadDistanceAtLeastMetres": 10.0
+              }
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": 0.45
+              },
+              "predicate": {
+                "targetSquadDistanceAtLeastMetres": 10.0
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    },
+    "DeepFreeze": {
+      "unitType": "Frostcaller",
+      "specSection": "§20.3",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Freeze",
+              "params": {
+                "frozenSeconds": 0.9,
+                "immunitySeconds": 1.4
+              }
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Freeze",
+              "params": {
+                "frozenSeconds": 1.05,
+                "immunitySeconds": 1.55
+              }
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Freeze",
+              "params": {
+                "frozenSeconds": 1.25,
+                "immunitySeconds": 1.75
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false,
+      "note": "A gain at every step, including at one caster: at one Frostcaller the immunity is not binding, the two-bolt cadence is (§11.6)."
+    },
+    "FrostArmor": {
+      "unitType": "Frostcaller",
+      "specSection": "§20.3",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Shield",
+              "params": {
+                "amount": 60,
+                "everySeconds": 4.0,
+                "durationSeconds": 4.0,
+                "target": "nearest allied squad's most-damaged model",
+                "preferTag": "Large"
+              }
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Shield",
+              "params": {
+                "amount": 90,
+                "everySeconds": 4.0,
+                "durationSeconds": 4.0,
+                "target": "nearest allied squad's most-damaged model",
+                "preferTag": "Large"
+              }
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "Shield",
+              "params": {
+                "amount": 120,
+                "everySeconds": 4.0,
+                "durationSeconds": 4.0,
+                "target": "nearest allied squad's most-damaged model",
+                "preferTag": "Large"
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    },
+    "Stonehide": {
+      "unitType": "Stonebacks",
+      "specSection": "§21.2",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "ArmorModifier",
+              "params": {
+                "add": 15
+              },
+              "scope": "self"
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "ArmorModifier",
+              "params": {
+                "add": 30
+              },
+              "scope": "self"
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "ArmorModifier",
+              "params": {
+                "add": 45
+              },
+              "scope": "self"
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false,
+      "note": "Decisive at one squad and inert at twelve — a regime finding, not a pool defect (ADR-0028)."
+    },
+    "Bulwark": {
+      "unitType": "Stonebacks",
+      "specSection": "§21.2",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "FormationSpacing",
+              "params": {
+                "spacingMetres": 2.8
+              },
+              "scope": "self"
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "FormationSpacing",
+              "params": {
+                "spacingMetres": 3.1
+              },
+              "scope": "self"
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "FormationSpacing",
+              "params": {
+                "spacingMetres": 3.4
+              },
+              "scope": "self"
+            },
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "defensive": 0.2
+              },
+              "predicate": {
+                "incoming": "frontal physical"
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    },
+    "Singling": {
+      "unitType": "Griffin",
+      "specSection": "§21.3",
+      "carriesBranchCounter": {
+        "step": 3,
+        "counters": "Magic",
+        "property": "model scarcity"
+      },
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": 0.15
+              },
+              "predicate": {
+                "targetSquadModelsAtMost": 3
+              }
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": 0.25
+              },
+              "predicate": {
+                "targetSquadModelsAtMost": 3
+              }
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "measured",
+          "effects": [
+            {
+              "primitive": "DamageModifier",
+              "params": {
+                "offensive": 0.4
+              },
+              "predicate": {
+                "targetSquadModelsAtMost": 3
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false,
+      "note": "Keys on model count, never on branch — so it also fires into the Troll and into Beast mirrors (ADR-0046)."
+    },
+    "Talons": {
+      "unitType": "Griffin",
+      "specSection": "§21.3",
+      "steps": [
+        {
+          "step": 1,
+          "cost": 150,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "ArmorBypass",
+              "params": {
+                "bypass": 0.2
+              }
+            }
+          ]
+        },
+        {
+          "step": 2,
+          "cost": 200,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "ArmorBypass",
+              "params": {
+                "bypass": 0.35
+              }
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "cost": 250,
+          "evidence": "unexercised",
+          "effects": [
+            {
+              "primitive": "ArmorBypass",
+              "params": {
+                "bypass": 0.5
+              }
+            }
+          ]
+        }
+      ],
+      "authoredAtWriteUp": false
+    }
+  },
+  "branchCounters": {
+    "specSection": "§17.3",
+    "entries": [
+      {
+        "branchExposed": "Military",
+        "property": "formation coherence",
+        "counter": "AoE catch pi*r^2/sp^2",
+        "livesOn": "Stormcaller · ChainLightning step 3"
+      },
+      {
+        "branchExposed": "Beast",
+        "property": "closing speed (Charging)",
+        "counter": "−40% damage from Charging attackers",
+        "livesOn": "BannerGuard · Rally step 3"
+      },
+      {
+        "branchExposed": "Magic",
+        "property": "model scarcity",
+        "counter": "+40% against squads of ≤ 3 models",
+        "livesOn": "Griffin · Singling step 3"
+      }
+    ]
+  },
+  "specDiscrepancies": [
+    {
+      "id": "troll-frontage",
+      "where": "§16 Troll stat block",
+      "stated": "frontage 8.4m",
+      "derived": 5.4,
+      "derivation": "(frontRank 2 − 1) × 3.0m spacing + 2 × 1.2m radius, per §13's frontage formula",
+      "likelyCause": "8.4 is exactly the frontage of a three-model Troll at the same spacing and radius; it is stale from before ADR-0046 made the Troll a two-model squad.",
+      "resolution": "This file records the inputs (frontRank, spacing, collisionRadius) and no derived frontage. The frozen deployment-archetype table already lays Trolls out on the derived 5.4m, so the stated 8.4m is the outlier. Reported as a finding; no spec edit made."
+    },
+    {
+      "id": "primitive-set-not-closed",
+      "where": "§25 Effect Primitives",
+      "stated": "the primitive set is closed but for \"two extensions and one carve-out, each recorded rather than waved through\"",
+      "derived": 8,
+      "derivation": "roster v1 already used five primitives §25 does not name — FormationSpacing, GrantAttackTag, RemoveAttackTag, Regeneration, EffectiveHealthModifier (#44) — and roster v2 adds RefreshStatus for Primal Magic, against the two §25 records (ModelCount, and the stance/Raid carve-out).",
+      "likelyCause": "§25 was written as a design constraint on new effects, then never reconciled against the payloads the spec itself authors. Its set is not closed over its own roster.",
+      "resolution": "Recorded, not reconciled — the map may not edit the spec. RefreshStatus earns its place on §25's own challenge (\"can this be expressed through existing primitives instead?\"): the honest answer is no. ApplyStatus is excluded because application is precisely what causes Frozen (§11.2), which §10.3 forbids Beast attacks from doing, so reuse would mean a mode flag switching off the primitive's defining behaviour. Duration arithmetic without application semantics has no existing expression. #47."
+    },
+    {
+      "id": "control-point-separation",
+      "where": "§5.5 control point",
+      "stated": "the two control points are \"44m apart\"",
+      "derived": 56.0,
+      "derivation": "§5.5 places them at (30, 12) and (30, 68); 68 - 12 = 56. Each sits at the centre of its own 24m-deep deployment band on the 80m field, so the coordinates are self-consistent and only the stated separation is not.",
+      "likelyCause": "44m is a real and correct distance in this spec, but a different one: the **band front edge** (y = 24) to the **enemy** point (y = 68). That is the figure §5.4 uses (\"the enemy must march 44m to dig them out\") and §23.6 uses (\"raiders cross ~44m eating fire they never answer\") — both about travel from the line, not about the gap between the points. The prose in §5.5 borrowed the traverse and labelled it a separation.",
+      "resolution": "This file records the coordinates and derives the separation, exactly as it records frontage inputs and derives frontage. Both numbers are carried: `separationMetres` 56.0 and `raidTraverseMetres` 44.0. Decision-relevant rather than cosmetic — a kernel that placed the points 44m apart would put them inside the deployment bands' own gap and shorten every pursuit-phase walk in §5.4. Reported as a finding; no spec edit made. #47."
+    }
+  ]
+}

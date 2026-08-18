@@ -1,6 +1,6 @@
 """Loader for the versioned roster artifact.
 
-`roster-v1.json` is the single source for every unit stat, technology payload,
+`roster-v2.json` is the single source for every unit stat, technology payload,
 track step and balance constant in WARWEAVE. It is hand-authored from
 `docs/spec/v0.4.md` and it outlives the throwaway runner (#26).
 
@@ -14,7 +14,7 @@ import hashlib
 import json
 import os
 
-PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'roster-v1.json')
+PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'roster-v2.json')
 
 with open(PATH, 'rb') as _f:
     _RAW = _f.read()
@@ -30,8 +30,36 @@ UNITS = DATA['unitTypes']
 TECHNOLOGIES = DATA['technologies']
 TRACKS = DATA['tracks']
 CONSTANTS = DATA['constants']
+HYBRIDS = DATA['affinityLadder']['hybridUnlocks']
+
+SCHEMA_VERSION = DATA['schemaVersion']
 
 TRACK_STEP_COSTS = tuple(CONSTANTS['economy']['prices']['trackStepCosts'])
+
+
+def steps(entry):
+    """Every upgrade carrier is a list of steps (#47).
+
+    Roster v2 reshaped the 16 technologies into one-step tracks, so a reader
+    never branches on which of the two it is holding. A technology is simply a
+    track that has not been given a step 2 yet, and giving it one is a data
+    edit rather than a schema change.
+    """
+    return entry['steps']
+
+
+def upgrades():
+    """(kind, name, entry) over both carriers, in file order.
+
+    The two stay separate top-level keys on purpose: §34.4's six warned
+    technologies and §34.3's seven unproven track payloads are two sets #38's
+    handoff inherits separately, and merging them would make every such read
+    filter a discriminator to recover a split the data already had.
+    """
+    for name, t in TECHNOLOGIES.items():
+        yield 'technology', name, t
+    for name, t in TRACKS.items():
+        yield 'track', name, t
 
 
 def frontage(unit):
@@ -128,16 +156,28 @@ def mm_tracks():
 def unexercised_payloads():
     """Every technology and track step that carries no paper evidence (§34.3)."""
     out = []
-    for name, t in TECHNOLOGIES.items():
-        if t['evidence'] == 'unexercised':
-            out.append(name)
-    for name, t in TRACKS.items():
-        for s in t['steps']:
+    for kind, name, t in upgrades():
+        for s in steps(t):
             if s['evidence'] == 'unexercised':
-                out.append('%s %d' % (name, s['step']))
+                out.append(name if kind == 'technology'
+                           else '%s %d' % (name, s['step']))
     return out
 
 
 def authored_at_write_up():
     """The six ⚠ technologies of §18.1 / §34.4."""
     return [n for n, t in TECHNOLOGIES.items() if t['authoredAtWriteUp']]
+
+
+def hybrid(name):
+    """One §10 hybrid unlock by name — payload authored at roster v2 (#47)."""
+    for h in HYBRIDS:
+        if h['name'] == name:
+            return h
+    raise KeyError(name)
+
+
+def affinity(branch_investment):
+    """§6.3: every gateway costs 200 against a 200 divisor, and gold past
+    1,000 in a branch generates no further affinity."""
+    return min(5, int(branch_investment) // 200)
